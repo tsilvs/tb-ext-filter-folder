@@ -59,6 +59,18 @@
 	"warningsHeader": {
 		"message": "Warnings:"
 	},
+	"resultsHeader": {
+		"message": "Analysis Results"
+	},
+	"analyzeToSeeFolders": {
+		"message": "Run analysis to see missing folders here."
+	},
+	"createMissingFoldersBtn": {
+		"message": "Create Missing Folders"
+	},
+	"noMissingFolders": {
+		"message": "No missing folders found."
+	},
 	"scanSourceLabel": {
 		"message": "Scan Source Folder:"
 	},
@@ -92,8 +104,14 @@
 	"createSelectedFolders": {
 		"message": "Create Selected Folders"
 	},
-	"createFoldersAndRules": {
-		"message": "Create $COUNT$ Folders & Rules"
+	"btnCreateFoldersOnly": {
+		"message": "Create $COUNT$ Folders"
+	},
+	"btnGenerateRulesOnly": {
+		"message": "Generate Rules Text"
+	},
+	"downloadCombined": {
+		"message": "Download Combined Rules"
 	},
 	"generatedRulesHeader": {
 		"message": "Generated Rules"
@@ -151,5 +169,16 @@
 	},
 	"missing": {
 		"message": "Missing"
+	},
+	"statsFormat": {
+		"message": "$TOTAL$ ($LEAFS$ leafs)",
+		"placeholders": {
+			"TOTAL": {
+				"content": "$1"
+			},
+			"LEAFS": {
+				"content": "$2"
+			}
+		}
 	}
 }

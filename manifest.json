@@ -14,7 +14,8 @@
 		"accountsRead",
 		"messagesRead",
 		"tabs",
-		"accountsFolders"
+		"accountsFolders",
+		"downloads"
 	],
 	"default_locale": "en",
 	"browser_action": {

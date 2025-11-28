@@ -1,24 +1,27 @@
 // Parse msgFilterRules.dat format
+// Synchronized with frontend robust parser
 const parseFilterRules = (content) => {
-	const lines = content.split('\n')
 	const folderPaths = new Set()
+	if (!content) return []
 
-	console.log('Parsing filter rules, total lines:', lines.length)
+	// Split by rule definition block start roughly
+	const blocks = content.split('name=')
+	console.log('Parsing filter rules, blocks:', blocks.length)
 
-	lines.forEach((line, idx) => {
-		const trimmed = line.trim()
-		if (trimmed.includes('actionValue="imap:')) {
-			const match = trimmed.match(/actionValue="([^"]+)"/)
-			if (match) {
-				const uri = match[1]
-				let pathMatch = uri.match(/imap:\/\/[^/]+@[^/]+\/(.+)/)
-				if (!pathMatch) pathMatch = uri.match(/imap:\/\/[^/]+\/(.+)/)
-				if (!pathMatch) pathMatch = uri.match(/mailbox:\/\/[^/]+\/(.+)/)
+	blocks.forEach(block => {
+		// Look for move to folder action
+		const actionMatch = block.match(/actionValue="([^"]+)"/)
 
-				if (pathMatch) {
-					const path = decodeURIComponent(pathMatch[1])
-					folderPaths.add(path)
-				}
+		if (actionMatch) {
+			const uri = actionMatch[1]
+			// Support standard IMAP, no-user format, and mailbox format
+			let pathMatch = uri.match(/imap:\/\/[^/]+@[^/]+\/(.+)/)
+			if (!pathMatch) pathMatch = uri.match(/imap:\/\/[^/]+\/(.+)/)
+			if (!pathMatch) pathMatch = uri.match(/mailbox:\/\/[^/]+\/(.+)/)
+
+			if (pathMatch) {
+				const path = decodeURIComponent(pathMatch[1])
+				folderPaths.add(path)
 			}
 		}
 	})
@@ -136,20 +139,24 @@ const analyzeMissingFolders = async (filterContent, accountId, mergeCase) => {
 }
 
 // Scan Messages for Discovery (Tab 2)
-const scanForSenders = async (folderId, limit) => {
+const scanForSenders = async (folderIdInput, limit) => {
 	try {
+		const folderId = String(folderIdInput)
+
 		// Get account info for current user to exclude self
 		const folder = await messenger.folders.get(folderId)
 		const account = await messenger.accounts.get(folder.accountId)
 
 		// List messages
+		console.log(`Scanning folder ${folderId} for messages...`)
 		const page = await messenger.messages.list(folderId)
-		const messages = page.messages
+		let messages = page.messages || []
 
-		// If we need more, handling page.continue() is possible, 
-		// but for performance we just take the first batch (usually 100-1000 depending on client settings)
-		// To respect 'limit', we might need to iterate.
-		// For MVP, the first page is usually sufficient for "recent" contacts.
+		console.log(`Found ${messages.length} messages in folder.`)
+
+		if (limit && messages.length > limit) {
+			messages = messages.slice(0, limit)
+		}
 
 		const senders = new Set()
 		const identities = account.identities || []
@@ -157,18 +164,28 @@ const scanForSenders = async (folderId, limit) => {
 
 		for (const msg of messages) {
 			if (msg.author) {
-				// Author format: "Name <email>" or "email"
+				// Robust author parsing
+				let email = ''
 				const match = msg.author.match(/<([^>]+)>/)
-				const email = (match ? match[1] : msg.author).trim().toLowerCase()
 
-				// Exclude self
-				if (!myEmails.includes(email) && email.includes('@')) {
+				if (match && match[1]) {
+					email = match[1]
+				} else if (msg.author.includes('@')) {
+					email = msg.author
+				}
+
+				email = email.trim().toLowerCase()
+
+				// Basic validity check and exclude self
+				if (email.length > 3 && email.includes('@') && !myEmails.includes(email)) {
 					senders.add(email)
 				}
 			}
 		}
 
-		return Array.from(senders)
+		const result = Array.from(senders)
+		console.log(`Scan complete. Found ${result.length} unique senders.`)
+		return result
 	} catch (e) {
 		console.error("Scan failed", e)
 		throw new Error("Failed to scan folder: " + e.message)

@@ -9,145 +9,244 @@
 	</head>
 
 	<body>
-		<header>
-			<h1 data-i18n="extensionName"></h1>
-		</header>
+		<main class="container">
+			<header>
+				<h1 data-i18n="extensionName"></h1>
+			</header>
 
-		<!-- Shared Configuration -->
-		<section class="shared-config">
-			<label for="account"
-						 data-i18n="imapAccount"></label>
-			<select id="account"
-							required>
-				<option value=""
-								data-i18n="loadingAccounts"></option>
-			</select>
-
-			<label for="fileInput"
-						 data-i18n="uploadFile"></label>
-			<input type="file"
-						 id="fileInput"
-						 accept=".dat,text/plain">
-			
-			<textarea id="pasteInput"
-								class="collapsed"
-								data-i18n-placeholder="pastePlaceholder"></textarea>
-			<div class="meta-info">
-				<span id="ruleCountDisplay"></span>
-			</div>
-		</section>
-
-		<!-- Tabs -->
-		<nav class="tabs">
-			<button class="tab-btn active"
-							data-tab="tab-folders"
-							data-i18n="tabMissingFolders"></button>
-			<button class="tab-btn"
-							data-tab="tab-discovery"
-							data-i18n="tabRuleDiscovery"></button>
-		</nav>
-
-		<!-- Tab 1: Missing Folders (Existing Functionality) -->
-		<div id="tab-folders"
-				 class="tab-content active">
-			<form id="mainForm">
-				<section class="instruction"
-								 data-i18n="instructions"></section>
-
-				<section class="stats">
-					<aside class="stat">
-						<div class="stat-label"
-								 data-i18n="existingFolders"></div>
-						<output class="stat-value"
-										id="existingFolders">—</output>
-					</aside>
-					<aside class="stat">
-						<div class="stat-label"
-								 data-i18n="filterRules"></div>
-						<output class="stat-value"
-										id="filterRules">—</output>
-					</aside>
-				</section>
-
-				<div class="checkbox-group">
-					<input type="checkbox"
-								 id="mergeCase"
-								 checked>
-					<label for="mergeCase"
-								 class="inline"
-								 data-i18n="mergeCaseLabel"></label>
-				</div>
-
-				<button type="submit"
-								id="analyze"
-								disabled
-								data-i18n="analyzeMissing"></button>
-			</form>
-
-			<aside class="status-area"
-						 id="status-folders"></aside>
-			<section class="results-container"
-							 id="results"
-							 aria-live="polite"></section>
-		</div>
-
-		<!-- Tab 2: Rule Discovery (New Functionality) -->
-		<div id="tab-discovery"
-				 class="tab-content">
-			<form id="discoveryForm">
-				<section class="instruction"
-								 data-i18n="discoveryInstructions"></section>
-
-				<!-- 1. Source -->
-				<label for="scanSource"
-							 data-i18n="scanSourceLabel"></label>
-				<select id="scanSource">
-					<option data-i18n="loadingFolders"></option>
+			<!-- Shared Configuration -->
+			<section class="card shared-config">
+				<label for="account"
+							 data-i18n="imapAccount"></label>
+				<select id="account"
+								required>
+					<option value=""
+									data-i18n="loadingAccounts"></option>
 				</select>
 
-				<!-- 2. Target Root -->
-				<label for="targetRoot"
-							 data-i18n="targetRootLabel"></label>
-				<div class="input-group">
-					<input type="text"
-								 id="targetRoot"
-								 placeholder="e.g. Archives/Clients">
-					<button type="button"
-									id="inferRootBtn"
-									data-i18n="inferRootBtn"
-									title="Guess root based on existing filter rules"></button>
+				<label for="fileInput"
+							 data-i18n="uploadFile"></label>
+				<input type="file"
+							 id="fileInput"
+							 accept=".dat,text/plain">
+
+				<textarea id="pasteInput"
+									class="collapsed"
+									data-i18n-placeholder="pastePlaceholder"></textarea>
+
+				<div class="meta-info">
+
+					<span id="ruleCountDisplay"></span>
 				</div>
-				<small class="hint" data-i18n="targetRootHint"></small>
-
-				<button type="submit"
-								id="startDiscovery"
-								class="primary"
-								data-i18n="scanAndDiscover"></button>
-			</form>
-
-			<aside class="status-area"
-						 id="status-discovery"></aside>
-
-			<section id="discoveryResults"
-							 class="discovery-list hidden">
-				<div class="list-header">
-					<span data-i18n="discoveredEmail"></span>
-					<span data-i18n="proposedPath"></span>
-				</div>
-				<div id="discoveryListItems"></div>
-				
-				<button id="createDiscoveredFolders"
-								disabled
-								data-i18n="createFoldersAndRules"></button>
 			</section>
 
-			<!-- Generated Rules Output -->
-			<section id="generatedRulesArea" class="hidden">
-				<h3 data-i18n="generatedRulesHeader"></h3>
-				<p class="hint" data-i18n="generatedRulesHint"></p>
-				<textarea id="generatedRulesOutput" readonly></textarea>
-			</section>
-		</div>
+			<!-- Tabs -->
+			<nav class="tabs">
+
+				<button class="tab-btn active"
+								data-tab="tab-folders"
+								data-i18n="tabMissingFolders"></button>
+
+				<button class="tab-btn"
+								data-tab="tab-discovery"
+								data-i18n="tabRuleDiscovery"></button>
+			</nav>
+
+			<!-- Tab 1: Missing Folders (Existing Functionality) -->
+
+			<div id="tab-folders"
+					 class="tab-content active">
+
+				<section class="card">
+					<form id="mainForm">
+						<section class="instruction"
+										 data-i18n="instructions"></section>
+
+						<section class="stats">
+							<aside class="stat">
+
+								<div class="stat-label"
+										 data-i18n="existingFolders"></div>
+								<output class="stat-value"
+												id="existingFolders">—</output>
+							</aside>
+							<aside class="stat">
+
+								<div class="stat-label"
+										 data-i18n="filterRules"></div>
+								<output class="stat-value"
+												id="filterRules">—</output>
+							</aside>
+						</section>
+
+						<div class="checkbox-group">
+							<input type="checkbox"
+										 id="mergeCase"
+										 checked>
+							<label for="mergeCase"
+										 class="inline"
+										 data-i18n="mergeCaseLabel"></label>
+						</div>
+
+						<div class="actions">
+
+							<button type="submit"
+											id="analyze"
+											disabled
+											data-i18n="analyzeMissing"></button>
+							<aside class="status-area"
+										 id="status-folders"></aside>
+						</div>
+					</form>
+				</section>
+
+				<!-- Static Analysis Results -->
+				<section id="analysisResults"
+								 class="card">
+					<h2 id="resAccountName"
+							data-i18n="resultsHeader">Results</h2>
+
+					<section class="stats">
+						<aside class="stat">
+
+							<div class="stat-label"
+									 data-i18n="uniqueLeafs">Leaf Paths</div>
+							<output class="stat-value"
+											id="resTotalLeafs">—</output>
+						</aside>
+						<aside class="stat">
+
+							<div class="stat-label"
+									 data-i18n="missing">Missing</div>
+							<output class="stat-value"
+											id="resMissingCount">—</output>
+						</aside>
+					</section>
+
+					<div id="analysisWarnings"
+							 class="status-container"></div>
+
+					<div id="missingFoldersList"
+							 class="folder-list empty-state">
+
+						<span class="hint"
+									data-i18n="analyzeToSeeFolders"></span>
+					</div>
+
+					<div class="actions">
+
+						<button id="btnCreateMissingFolders"
+										disabled
+										title="Please run analysis first"
+										data-i18n="createMissingFoldersBtn"></button>
+					</div>
+				</section>
+			</div>
+
+			<!-- Tab 2: Rule Discovery (New Functionality) -->
+
+			<div id="tab-discovery"
+					 class="tab-content">
+
+				<section class="card">
+					<form id="discoveryForm">
+						<section class="instruction"
+										 data-i18n="discoveryInstructions"></section>
+
+						<!-- 1. Source -->
+						<label for="scanSource"
+									 data-i18n="scanSourceLabel"></label>
+						<select id="scanSource">
+							<option data-i18n="loadingFolders"></option>
+						</select>
+
+						<!-- 2. Target Root -->
+						<label for="targetRoot"
+									 data-i18n="targetRootLabel"></label>
+
+						<div class="input-group">
+							<input type="text"
+										 id="targetRoot"
+										 placeholder="e.g. Archives/Clients">
+
+							<button type="button"
+											id="inferRootBtn"
+											data-i18n="inferRootBtn"
+											title="Guess root based on existing filter rules"></button>
+						</div>
+						<small class="hint"
+									 data-i18n="targetRootHint"></small>
+
+						<div class="actions">
+
+							<button type="submit"
+											id="startDiscovery"
+											class="primary"
+											data-i18n="scanAndDiscover"></button>
+							<aside class="status-area"
+										 id="status-discovery"></aside>
+						</div>
+					</form>
+				</section>
+
+				<section id="discoveryResults"
+								 class="card discovery-list hidden">
+
+					<div class="list-header">
+						<input type="checkbox"
+									 id="selectAllDiscovery"
+									 checked>
+
+						<span class="sortable"
+									data-sort="email">
+
+							<span data-i18n="discoveredEmail"></span>
+
+							<span class="sort-icon"></span>
+						</span>
+
+						<span class="sortable"
+									data-sort="path">
+
+							<span data-i18n="proposedPath"></span>
+
+							<span class="sort-icon"></span>
+						</span>
+					</div>
+
+					<div id="discoveryListItems"></div>
+
+					<div class="actions">
+
+						<button id="btnCreateFolders"
+										disabled
+										data-i18n="btnCreateFoldersOnly"></button>
+
+						<button id="btnGenerateRules"
+										class="secondary"
+										disabled
+										data-i18n="btnGenerateRulesOnly"></button>
+					</div>
+				</section>
+
+				<!-- Generated Rules Output -->
+				<section id="generatedRulesArea"
+								 class="card hidden">
+					<h3 data-i18n="generatedRulesHeader"></h3>
+
+					<p class="hint"
+						 data-i18n="generatedRulesHint"></p>
+					<textarea id="generatedRulesOutput"
+										readonly></textarea>
+
+					<div class="actions">
+
+						<button id="btnDownloadRules"
+										data-i18n="downloadCombined"></button>
+					</div>
+				</section>
+			</div>
+		</main>
 
 		<script src="folderMng.js"></script>
 	</body>
