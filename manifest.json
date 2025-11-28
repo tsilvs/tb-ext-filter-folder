@@ -1,0 +1,33 @@
+{
+	"manifest_version": 2,
+	"name": "Filter Folder Creator",
+	"version": "1.0",
+	"description": "Creates missing IMAP folders from filter rules",
+	"author": "Your Name",
+	"applications": {
+		"gecko": {
+			"id": "filter-folder-creator@example.com",
+			"strict_min_version": "78.0"
+		}
+	},
+	"permissions": [
+		"accountsRead",
+		"messagesRead",
+		"tabs",
+		"accountsFolders"
+	],
+	"default_locale": "en",
+	"browser_action": {
+		"default_title": "Filter Folder Creator",
+		"default_popup": "folderMng.html"
+	},
+	"background": {
+		"scripts": [
+			"background.js"
+		]
+	},
+	"icons": {
+		"48": "icon.png",
+		"96": "icon.png"
+	}
+}

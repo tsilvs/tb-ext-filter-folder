@@ -1,0 +1,138 @@
+{
+	"extensionName": {
+		"message": "Filter Folder Creator"
+	},
+	"extensionDescription": {
+		"message": "Creates missing IMAP folders from filter rules"
+	},
+	"instructions": {
+		"message": "Locate msgFilterRules.dat in your profile folder (Tools → Account Settings → Server Settings → Browse), then upload or paste its content below."
+	},
+	"existingFolders": {
+		"message": "Existing Folders"
+	},
+	"filterRules": {
+		"message": "Filter Rules"
+	},
+	"configuration": {
+		"message": "Configuration"
+	},
+	"imapAccount": {
+		"message": "IMAP Account:"
+	},
+	"uploadFile": {
+		"message": "Upload msgFilterRules.dat:"
+	},
+	"orPaste": {
+		"message": "Or paste content:"
+	},
+	"pastePlaceholder": {
+		"message": "Paste msgFilterRules.dat content here..."
+	},
+	"mergeCaseLabel": {
+		"message": "Merge case-insensitive duplicates (e.g. Work == work)"
+	},
+	"mergeCaseTooltip": {
+		"message": "If enabled, existing folders with different casing will count as a match."
+	},
+	"analyzeMissing": {
+		"message": "Analyze Missing Folders"
+	},
+	"analyzing": {
+		"message": "Analyzing..."
+	},
+	"readingFile": {
+		"message": "Reading file..."
+	},
+	"loadedFile": {
+		"message": "✓ Loaded $FILE$ ($COUNT$ IMAP rules)",
+		"placeholders": {
+			"file": {
+				"content": "$1"
+			},
+			"count": {
+				"content": "$2"
+			}
+		}
+	},
+	"analysisComplete": {
+		"message": "✓ Analysis complete: $COUNT$ missing folders",
+		"placeholders": {
+			"count": {
+				"content": "$1"
+			}
+		}
+	},
+	"allFoldersExist": {
+		"message": "✓ All folders exist!"
+	},
+	"caseSensitiveWarning": {
+		"message": "Note: Case-insensitive merging is OFF. 'Work' and 'work' will be treated as different folders."
+	},
+	"createFolders": {
+		"message": "Create $COUNT$ Folders",
+		"placeholders": {
+			"count": {
+				"content": "$1"
+			}
+		}
+	},
+	"creating": {
+		"message": "Creating..."
+	},
+	"creatingProgress": {
+		"message": "Creating $CURRENT$/$TOTAL$: $PATH$",
+		"placeholders": {
+			"current": {
+				"content": "$1"
+			},
+			"total": {
+				"content": "$2"
+			},
+			"path": {
+				"content": "$3"
+			}
+		}
+	},
+	"stop": {
+		"message": "Stop"
+	},
+	"stoppedByUser": {
+		"message": "✗ Stopped by user"
+	},
+	"done": {
+		"message": "Done"
+	},
+	"retry": {
+		"message": "Retry"
+	},
+	"doneStatus": {
+		"message": "✓ Done: $CREATED$ created, $FAILED$ failed",
+		"placeholders": {
+			"created": {
+				"content": "$1"
+			},
+			"failed": {
+				"content": "$2"
+			}
+		}
+	},
+	"noAccounts": {
+		"message": "No IMAP accounts found"
+	},
+	"loadingAccounts": {
+		"message": "Loading accounts..."
+	},
+	"selectAccount": {
+		"message": "Please select an account"
+	},
+	"uploadOrPaste": {
+		"message": "Please upload or paste filter rules"
+	},
+	"uniqueLeafs": {
+		"message": "Target Paths (Leafs)"
+	},
+	"missing": {
+		"message": "Missing"
+	}
+}

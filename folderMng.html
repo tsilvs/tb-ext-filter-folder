@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title data-i18n="extensionName">Loading...</title>
+		<link rel="stylesheet"
+					href="style.css">
+	</head>
+
+	<body>
+		<header>
+			<h1 data-i18n="extensionName"></h1>
+		</header>
+
+		<!-- 1. Global Stats -->
+		<section class="stats">
+			<aside class="stat">
+				<div class="stat-label"
+						 data-i18n="existingFolders"></div>
+				<output class="stat-value"
+								id="existingFolders">—</output>
+			</aside>
+			<aside class="stat">
+				<div class="stat-label"
+						 data-i18n="filterRules"></div>
+				<output class="stat-value"
+								id="filterRules">—</output>
+			</aside>
+		</section>
+
+		<!-- 2. Configuration -->
+		<form id="mainForm">
+			<fieldset>
+				<legend data-i18n="configuration"></legend>
+
+				<section class="instruction"
+								 data-i18n="instructions"></section>
+
+				<label for="account"
+							 data-i18n="imapAccount"></label>
+				<select id="account"
+								required>
+					<option value=""
+									data-i18n="loadingAccounts"></option>
+				</select>
+
+				<label for="fileInput"
+							 data-i18n="uploadFile"></label>
+				<input type="file"
+							 id="fileInput"
+							 accept=".dat,text/plain">
+
+				<label for="pasteInput"
+							 data-i18n="orPaste"></label>
+				<textarea id="pasteInput"
+									data-i18n-placeholder="pastePlaceholder"></textarea>
+
+				<div class="checkbox-group">
+					<input type="checkbox"
+								 id="mergeCase"
+								 checked>
+					<label for="mergeCase"
+								 class="inline"
+								 data-i18n="mergeCaseLabel"
+								 title="If 'Inbox/Work' is needed but 'Inbox/work' exists, treat as found."></label>
+				</div>
+
+				<button type="submit"
+								id="analyze"
+								disabled
+								data-i18n="analyzeMissing"></button>
+			</fieldset>
+		</form>
+
+		<!-- 3. Status Output -->
+		<aside class="status-area"
+					 aria-live="polite"
+					 aria-atomic="true">
+			<div id="status"></div>
+		</aside>
+
+		<!-- 4. Detailed Results -->
+		<section class="results-container"
+						 id="results"
+						 aria-live="polite"></section>
+
+		<script src="folderMng.js"></script>
+	</body>
+
+</html>
