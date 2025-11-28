@@ -92,6 +92,15 @@
 	"createSelectedFolders": {
 		"message": "Create Selected Folders"
 	},
+	"createFoldersAndRules": {
+		"message": "Create $COUNT$ Folders & Rules"
+	},
+	"generatedRulesHeader": {
+		"message": "Generated Rules"
+	},
+	"generatedRulesHint": {
+		"message": "Copy and append this block to the end of your msgFilterRules.dat file:"
+	},
 	"noNewSenders": {
 		"message": "No new senders found without rules."
 	},

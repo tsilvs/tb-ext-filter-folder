@@ -8,8 +8,8 @@ let currentDiscovered = []   // Array of {email, path, selected}
 // --- Initialization ---
 
 document.addEventListener('DOMContentLoaded', () => {
-	const extName = messenger.i18n.getMessage('extensionName')
-	document.title = extName
+	const extName = messenger.i18n.getMessage('extensionName');
+	document.title = extName;
 
 	document.querySelectorAll('[data-i18n]').forEach(elem => {
 		elem.textContent = messenger.i18n.getMessage(elem.dataset.i18n)
@@ -17,9 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
 		elem.placeholder = messenger.i18n.getMessage(elem.dataset.i18nPlaceholder)
 	})
-
-	initTabs()
-	loadAccounts()
+	
+	initTabs();
+	loadAccounts();
 })
 
 // --- Tab Management ---
@@ -29,7 +29,7 @@ const initTabs = () => {
 			// Remove active class from all
 			document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
 			document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
-
+			
 			// Activate clicked
 			btn.classList.add('active')
 			$(btn.dataset.tab).classList.add('active')
@@ -47,11 +47,11 @@ const updateStat = (id, value) => {
 const showStatus = (areaId, message, type) => {
 	const statusArea = $(areaId)
 	if (!statusArea) return
-
+	
 	const div = document.createElement('div')
 	div.className = `status ${type}`
 	div.textContent = message
-
+	
 	// If progress, add stop button logic if needed (simplified here)
 	statusArea.innerHTML = ''
 	statusArea.appendChild(div)
@@ -64,10 +64,10 @@ const emailToPath = (email) => {
 	const clean = email.toLowerCase().trim()
 	const parts = clean.split('@')
 	if (parts.length !== 2) return null
-
+	
 	const [user, domain] = parts
 	const domainParts = domain.split('.').reverse()
-
+	
 	// Filter empty parts
 	const pathParts = [...domainParts, user].filter(p => p.length > 0)
 	return pathParts.join('/')
@@ -78,25 +78,25 @@ const emailToPath = (email) => {
 const extractRuleMappings = (content) => {
 	const mappings = []
 	const blocks = content.split('name=')
-
+	
 	blocks.forEach(block => {
 		const enabled = block.includes('enabled="yes"')
 		// Extract email from condition: condition="AND (from,contains,bob@foo.com)"
 		// Regex looks for: (from,contains, [email] )
 		const condMatch = block.match(/\(from,contains,([^)]+)\)/)
-
+		
 		// Extract action: actionValue="imap://user@host/Path/To/Folder"
 		const actionMatch = block.match(/actionValue="([^"]+)"/)
-
+		
 		if (condMatch && actionMatch) {
 			const email = condMatch[1].trim()
 			const uri = actionMatch[1]
-
+			
 			// Parse URI to path
 			let path = ''
 			let pathMatch = uri.match(/imap:\/\/[^/]+@[^/]+\/(.+)/)
 			if (!pathMatch) pathMatch = uri.match(/imap:\/\/[^/]+\/(.+)/)
-
+			
 			if (pathMatch) {
 				path = decodeURIComponent(pathMatch[1])
 				mappings.push({ email, path, enabled })
@@ -110,39 +110,39 @@ const extractRuleMappings = (content) => {
 const inferRootFromRules = (rulesContent) => {
 	const mappings = extractRuleMappings(rulesContent)
 	if (mappings.length === 0) return null
-
+	
 	// We look for a pattern where Path ends with EmailToPath
 	// Path = ROOT + EmailToPath
 	// Therefore ROOT = Path - EmailToPath
-
+	
 	const counts = new Map() // Root -> Count
-
+	
 	mappings.forEach(m => {
 		const expectedSuffix = emailToPath(m.email) // e.g. com/google/bob
 		if (!expectedSuffix) return
-
+		
 		// Case insensitive check
 		const p = m.path.toLowerCase()
 		const s = expectedSuffix.toLowerCase()
-
+		
 		if (p.endsWith(s)) {
 			// Extract root. 
 			// Full: Archives/com/google/bob
 			// Suffix: com/google/bob
 			// Root: Archives/
-
+			
 			// Use original case from path
 			const rootLength = m.path.length - s.length
 			// If root exists, it should end in / usually, unless empty
 			let root = m.path.substring(0, rootLength)
-
+			
 			// Normalize: Remove trailing slash if strictly root
 			if (root.endsWith('/')) root = root.slice(0, -1)
-
+			
 			counts.set(root, (counts.get(root) || 0) + 1)
 		}
 	})
-
+	
 	// Return most frequent root
 	let bestRoot = null
 	let max = 0
@@ -152,8 +152,33 @@ const inferRootFromRules = (rulesContent) => {
 			bestRoot = root
 		}
 	})
-
+	
 	return bestRoot
+}
+
+// 4. Generate New Rules text
+const extractBaseUri = (content) => {
+	// Try to find the IMAP prefix from existing rules
+	// e.g. "imap://user%40gmail.com@imap.gmail.com"
+	const match = content.match(/actionValue="(imap:\/\/[^/]+)\//)
+	if (match) return match[1]
+	
+	// Fallback if no moves exist yet
+	return "imap://REPLACE_ME"
+}
+
+const generateRuleBlock = (baseUri, email, folderPath) => {
+	// Encode path for URI (Thunderbird uses mostly standard URI encoding)
+	// We ensure the folder path is encoded (e.g. spaces to %20)
+	const encodedPath = folderPath.split('/').map(encodeURIComponent).join('/')
+	const fullUri = `${baseUri}/${encodedPath}`
+	
+	return `name="From ${email}"
+enabled="yes"
+type="17"
+action="Move to folder"
+actionValue="${fullUri}"
+condition="AND (from,contains,${email})"`
 }
 
 // --- Data Loading ---
@@ -161,21 +186,21 @@ const inferRootFromRules = (rulesContent) => {
 // Recursively build flat list for dropdowns
 const buildFlatFolderList = async (folder, list = [], depth = 0) => {
 	if (!folder || !folder.id) return list
-
+	
 	list.push({
 		id: folder.id,
 		name: folder.name,
 		path: folder.path,
 		depth
 	})
-
+	
 	try {
 		const subFolders = await messenger.folders.getSubFolders(String(folder.id))
 		for (const sub of subFolders) {
 			await buildFlatFolderList(sub, list, depth + 1)
 		}
 	} catch (e) { /* ignore */ }
-
+	
 	return list
 }
 
@@ -183,7 +208,7 @@ const loadAccounts = async () => {
 	const accounts = await messenger.accounts.list()
 	const imapAccounts = accounts.filter(a => a.type === 'imap')
 	const select = $('account')
-
+	
 	select.innerHTML = ''
 	if (imapAccounts.length === 0) {
 		const opt = document.createElement('option')
@@ -209,15 +234,15 @@ const loadAccountStructure = async (accountId) => {
 	const account = await messenger.accounts.get(accountId)
 	const scanSelect = $('scanSource')
 	scanSelect.innerHTML = '<option>Loading...</option>'
-
+	
 	accountFoldersCache = []
-
+	
 	if (account.folders) {
 		for (const root of account.folders) {
 			await buildFlatFolderList(root, accountFoldersCache)
 		}
 	}
-
+	
 	// Populate Scan Source Dropdown
 	scanSelect.innerHTML = ''
 	accountFoldersCache.forEach(f => {
@@ -228,13 +253,40 @@ const loadAccountStructure = async (accountId) => {
 		if (f.name === 'Inbox' || f.type === 'inbox') opt.selected = true
 		scanSelect.appendChild(opt)
 	})
-
+	
 	// Update existing stats for Tab 1
 	loadExistingFolderCount(accountId)
 }
 
 const loadExistingFolderCount = async (accountId) => {
-	updateStat('existingFolders', accountFoldersCache.length)
+	// Counts all nodes in the cache
+	if (accountFoldersCache.length === 0) {
+		// If cache empty, we might need to count recursively
+		// But loadAccountStructure populates it.
+		// If using recursive counter purely:
+		const account = await messenger.accounts.get(accountId)
+		let count = 0
+		if (account.folders) {
+			for (const f of account.folders) {
+				count += await countFoldersRecursively(f)
+			}
+		}
+		updateStat('existingFolders', count)
+	} else {
+		updateStat('existingFolders', accountFoldersCache.length)
+	}
+}
+
+const countFoldersRecursively = async (folder) => {
+	if (!folder || !folder.id) return 0
+	let count = 1
+	try {
+		const subs = await messenger.folders.getSubFolders(String(folder.id))
+		for (const sub of subs) {
+			count += await countFoldersRecursively(sub)
+		}
+	} catch (e) { console.warn(e) }
+	return count
 }
 
 
@@ -252,11 +304,11 @@ $('fileInput').addEventListener('change', async (e) => {
 	if (!file) return
 	const text = await file.text()
 	$('pasteInput').value = text
-
+	
 	const count = countImapActions(text)
 	$('ruleCountDisplay').textContent = messenger.i18n.getMessage('loadedFile', [String(count)])
 	updateStat('filterRules', count)
-
+	
 	checkAnalyzeEnabled()
 })
 
@@ -295,13 +347,13 @@ $('mainForm').addEventListener('submit', async (e) => {
 			accountId,
 			mergeCase
 		})
-
+		
 		btn.disabled = false
 		showStatus('status-folders', messenger.i18n.getMessage('analysisComplete', [String(response.missing.length)]), 'success')
-
+		
 		if (response.warnings) renderWarnings(response.warnings, results)
 		results.appendChild(createResultsUI(response))
-
+		
 	} catch (err) {
 		btn.disabled = false
 		showStatus('status-folders', err.message, 'error')
@@ -316,7 +368,7 @@ $('inferRootBtn').addEventListener('click', () => {
 		showStatus('status-discovery', messenger.i18n.getMessage('uploadOrPaste'), 'error')
 		return
 	}
-
+	
 	const root = inferRootFromRules(content)
 	if (root) {
 		$('targetRoot').value = root
@@ -331,17 +383,22 @@ $('discoveryForm').addEventListener('submit', async (e) => {
 	const sourceId = $('scanSource').value
 	const targetRoot = $('targetRoot').value.trim()
 	const rulesContent = $('pasteInput').value
-
+	
 	if (!sourceId || !rulesContent) {
 		showStatus('status-discovery', messenger.i18n.getMessage('uploadOrPaste'), 'error')
 		return
 	}
-
+	
 	const btn = $('startDiscovery')
 	btn.disabled = true
 	const statusId = 'status-discovery'
 	showStatus(statusId, messenger.i18n.getMessage('scanningMessages', ['500']), 'progress')
-
+	
+	// Reset UI
+	$('discoveryResults').classList.add('hidden')
+	$('generatedRulesArea').classList.add('hidden')
+	$('generatedRulesOutput').value = ''
+	
 	try {
 		// 1. Get Messages
 		const senders = await messenger.runtime.sendMessage({
@@ -349,11 +406,11 @@ $('discoveryForm').addEventListener('submit', async (e) => {
 			folderId: sourceId,
 			limit: 500
 		})
-
+		
 		// 2. Filter against existing rules
 		const existingRules = extractRuleMappings(rulesContent)
 		const knownEmails = new Set(existingRules.map(r => r.email.toLowerCase()))
-
+		
 		// 3. Generate proposals
 		currentDiscovered = []
 		senders.forEach(email => {
@@ -363,18 +420,23 @@ $('discoveryForm').addEventListener('submit', async (e) => {
 					// Clean root: ensure no double slashes, but keep one sep
 					let root = targetRoot.replace(/\/+$/, '')
 					const fullPath = root ? `${root}/${suffix}` : suffix
-
+					
 					currentDiscovered.push({
 						email,
-						path: fullPath
+						path: fullPath,
+						selected: false // Track state here
 					})
 				}
 			}
 		})
-
-		renderDiscoveryResults(currentDiscovered)
-		showStatus(statusId, messenger.i18n.getMessage('scanComplete', [String(currentDiscovered.length)]), 'success')
-
+		
+		if (currentDiscovered.length === 0) {
+			showStatus(statusId, messenger.i18n.getMessage('noNewSenders'), 'info')
+		} else {
+			renderDiscoveryResults(currentDiscovered)
+			showStatus(statusId, messenger.i18n.getMessage('scanComplete', [String(currentDiscovered.length)]), 'success')
+		}
+		
 	} catch (err) {
 		console.error(err)
 		showStatus(statusId, err.message, 'error')
@@ -387,57 +449,70 @@ const renderDiscoveryResults = (items) => {
 	const container = $('discoveryResults')
 	const list = $('discoveryListItems')
 	list.innerHTML = ''
-
-	if (items.length === 0) {
-		container.classList.add('hidden')
-		return
-	}
-
+	
 	container.classList.remove('hidden')
-
+	
 	items.forEach((item, idx) => {
 		const div = document.createElement('div')
 		div.className = 'discovery-item'
-
+		
 		// Check if folder exists in cache?
-		// Simple case-insensitive check against cached paths
-		const exists = accountFoldersCache.some(f => f.path.replace(/^\//, '').toLowerCase() === item.path.toLowerCase())
-
+		const exists = accountFoldersCache.some(f => f.path.replace(/^\//,'').toLowerCase() === item.path.toLowerCase())
+		
 		if (exists) div.classList.add('exists')
-
-		// Multi-select logic could go here, for now click to toggle
+		
 		div.innerHTML = `
 			<div class="email">${item.email}</div>
 			<div class="path">${item.path}</div>
 		`
-
+		
+		// Store index ref
+		div.dataset.index = idx
+		
 		div.onclick = () => {
 			div.classList.toggle('selected')
+			currentDiscovered[idx].selected = div.classList.contains('selected')
 			updateCreateButton()
 		}
-
+		
 		list.appendChild(div)
 	})
-
+	
 	updateCreateButton()
 }
 
 const updateCreateButton = () => {
-	const selected = document.querySelectorAll('.discovery-item.selected').length
+	const selectedCount = currentDiscovered.filter(i => i.selected).length
 	const btn = $('createDiscoveredFolders')
-	btn.disabled = selected === 0
-	btn.textContent = messenger.i18n.getMessage('createFolders', [String(selected)])
+	btn.disabled = selectedCount === 0
+	btn.textContent = messenger.i18n.getMessage('createFoldersAndRules', [String(selectedCount)])
 }
 
 $('createDiscoveredFolders').addEventListener('click', async () => {
-	const selectedEls = document.querySelectorAll('.discovery-item.selected')
-	const paths = Array.from(selectedEls).map(el => el.querySelector('.path').textContent)
+	const selectedItems = currentDiscovered.filter(i => i.selected)
 	const accountId = $('account').value
-
-	if (paths.length === 0) return
-
-	// Reuse existing batch creation logic
-	handleCreateFoldersFromPaths(accountId, paths)
+	const existingContent = $('pasteInput').value
+	
+	if (selectedItems.length === 0) return
+	
+	// 1. Create Folders
+	const paths = selectedItems.map(i => i.path)
+	
+	// We handle status inside this func, but we need to manage the text generation after
+	await handleCreateFoldersFromPaths(accountId, paths, $('createDiscoveredFolders'))
+	
+	// 2. Generate Rules
+	const baseUri = extractBaseUri(existingContent)
+	const newRules = selectedItems.map(item => {
+		return generateRuleBlock(baseUri, item.email, item.path)
+	}).join('\n')
+	
+	// 3. Display
+	const area = $('generatedRulesArea')
+	const output = $('generatedRulesOutput')
+	output.value = newRules
+	area.classList.remove('hidden')
+	area.scrollIntoView({ behavior: 'smooth' })
 })
 
 
@@ -484,18 +559,18 @@ const createResultsUI = (analysis) => {
 
 	const folderList = document.createElement('section')
 	folderList.className = 'folder-list'
-
+	
 	window.folderStatusMap = new Map()
 
 	analysis.missing.forEach(path => {
 		const item = document.createElement('div')
 		item.className = 'folder-item pending'
 		item.dataset.path = path
-
+		
 		const icon = document.createElement('span')
 		icon.className = 'folder-icon pending'
 		icon.textContent = '○'
-
+		
 		const pathText = document.createElement('span')
 		pathText.className = 'folder-path'
 		pathText.textContent = path
@@ -536,42 +611,46 @@ const handleCreateFolders = (analysis, createBtn) => {
 
 // Generalized Handler
 const handleCreateFoldersFromPaths = (accountId, paths, btn = null) => {
-	// If btn provided, manage state, else manage manually
-	if (btn) btn.disabled = true
-
-	// Determine which status area to use based on active tab
-	const activeTab = document.querySelector('.tab-content.active').id
-	const statusId = activeTab === 'tab-discovery' ? 'status-discovery' : 'status-folders'
-
-	showStatus(statusId, messenger.i18n.getMessage('creating'), 'progress')
-
-	const port = messenger.runtime.connect({ name: 'create-folders' })
-
-	port.onMessage.addListener((msg) => {
-		if (msg.type === 'progress') {
-			showStatus(statusId, messenger.i18n.getMessage('creatingProgress', [String(msg.current), String(msg.total), msg.path]), 'progress')
-		} else if (msg.type === 'folderComplete') {
-			// Update UI maps if they exist
-			if (window.folderStatusMap && window.folderStatusMap.has(msg.path)) {
-				const item = window.folderStatusMap.get(msg.path)
-				item.className = 'folder-item complete'
+	return new Promise((resolve) => {
+		// If btn provided, manage state, else manage manually
+		if (btn) btn.disabled = true
+		
+		// Determine which status area to use based on active tab
+		const activeTab = document.querySelector('.tab-content.active').id
+		const statusId = activeTab === 'tab-discovery' ? 'status-discovery' : 'status-folders'
+		
+		showStatus(statusId, messenger.i18n.getMessage('creating'), 'progress')
+	
+		const port = messenger.runtime.connect({ name: 'create-folders' })
+		
+		port.onMessage.addListener((msg) => {
+			if (msg.type === 'progress') {
+				showStatus(statusId, messenger.i18n.getMessage('creatingProgress', [String(msg.current), String(msg.total), msg.path]), 'progress')
+			} else if (msg.type === 'folderComplete') {
+				// Update UI maps if they exist
+				if (window.folderStatusMap && window.folderStatusMap.has(msg.path)) {
+					const item = window.folderStatusMap.get(msg.path)
+					item.className = 'folder-item complete'
+				}
+			} else if (msg.type === 'complete') {
+				showStatus(statusId, messenger.i18n.getMessage('doneStatus', [String(msg.results.created.length), String(msg.results.failed.length)]), 'success')
+				if (btn) {
+					btn.textContent = messenger.i18n.getMessage('done')
+					btn.disabled = false
+				}
+				port.disconnect()
+				resolve(msg.results)
+			} else if (msg.type === 'error') {
+				showStatus(statusId, msg.error, 'error')
+				port.disconnect()
+				resolve(null)
 			}
-		} else if (msg.type === 'complete') {
-			showStatus(statusId, messenger.i18n.getMessage('doneStatus', [String(msg.results.created.length), String(msg.results.failed.length)]), 'success')
-			if (btn) {
-				btn.textContent = messenger.i18n.getMessage('done')
-				btn.disabled = false
-			}
-			port.disconnect()
-		} else if (msg.type === 'error') {
-			showStatus(statusId, msg.error, 'error')
-			port.disconnect()
-		}
-	})
-
-	port.postMessage({
-		action: 'create',
-		accountId: accountId,
-		folders: paths
+		})
+	
+		port.postMessage({
+			action: 'create',
+			accountId: accountId,
+			folders: paths
+		})
 	})
 }
