@@ -44,19 +44,30 @@ const countActionRules = (content) => {
 	return matches ? matches.length : 0
 }
 
-// Get all existing folders recursively
-const getAllFolders = async (folder, paths = new Set()) => {
-	// Normalize path: remove leading slashes, keep case for display but useful for strict checks
-	// We store strict path in Set for exact matching
-	const cleanPath = folder.path.replace(/^\/+/, '')
-	paths.add(cleanPath)
+// Async recursive helper to get all folders from object tree using explicit API
+const traverseFolderTree = async (folder, list = []) => {
+	list.push(folder)
+	try {
+		// Explicitly use API with ID to avoid deprecated property access
+		const subFolders = await messenger.folders.getSubFolders(folder.id)
+		for (const sub of subFolders) {
+			await traverseFolderTree(sub, list)
+		}
+	} catch (e) {
+		// Ignore errors for folders that can't have children or transient issues
+	}
+	return list
+}
 
-	if (folder.subFolders) {
-		for (const sub of folder.subFolders) {
-			await getAllFolders(sub, paths)
+// Helper to get all folders as a flat list using recursive traversal
+const getAccountFolderList = async (account) => {
+	const folderList = []
+	if (account.folders) {
+		for (const root of account.folders) {
+			await traverseFolderTree(root, folderList)
 		}
 	}
-	return paths
+	return folderList
 }
 
 // Create folder recursively with batch optimization
@@ -67,16 +78,16 @@ const createFolder = async (accountId, folderPath, progressCallback) => {
 	const account = await messenger.accounts.get(accountId)
 	const rootFolders = account.folders || []
 
+	// Fetch complete folder tree to avoid duplication (async)
+	const allFolders = await getAccountFolderList(account)
+
 	const folderMap = new Map()
-	// Build map using Case Insensitive keys to avoid duplicate creation attempts on Windows/mixed systems
-	const buildMap = (folder, parentPath = '') => {
-		const fullPath = parentPath ? `${parentPath}/${folder.name}` : folder.name
-		folderMap.set(fullPath.toLowerCase(), folder)
-		if (folder.subFolders) {
-			folder.subFolders.forEach(sub => buildMap(sub, fullPath))
-		}
-	}
-	rootFolders.forEach(f => buildMap(f))
+	
+	// Map all existing folders by their "clean" path
+	allFolders.forEach(f => {
+		const clean = f.path.replace(/^\/+/, '')
+		folderMap.set(clean.toLowerCase(), f)
+	})
 
 	// Create missing parts
 	for (let i = 0; i < parts.length; i++) {
@@ -89,22 +100,24 @@ const createFolder = async (accountId, folderPath, progressCallback) => {
 
 		let parent
 		if (i === 0) {
+			// Find inbox or first root
 			parent = rootFolders.find(f => f.type === 'inbox') || rootFolders[0]
 		} else {
-			// Find parent by lower-case match to be robust
+			// Find parent by lower-case match
 			const parentPath = parts.slice(0, i).join('/').toLowerCase()
 			parent = folderMap.get(parentPath)
 		}
 
 		if (!parent) {
-			// Optimization: If the parent is missing in map, it might have just been created in this session
-			// but folderMap wasn't updated. However, since we process depth-first (sorted), 
-			// the parent *should* exist unless API failed.
 			throw new Error(`Parent folder not found for: ${pathSoFar}. Ensure parent is created first.`)
 		}
 
 		try {
 			const created = await messenger.folders.create(parent, parts[i])
+			
+			// Update map
+			const cleanCreated = created.path.replace(/^\/+/, '')
+			folderMap.set(cleanCreated.toLowerCase(), created)
 			folderMap.set(normalized, created)
 
 			if (progressCallback) {
@@ -122,26 +135,30 @@ const createFolder = async (accountId, folderPath, progressCallback) => {
 
 // Analyze missing folders
 const analyzeMissingFolders = async (filterContent, accountId, mergeCase) => {
-	const accounts = await messenger.accounts.list()
-	const account = accounts.find(a => a.id === accountId)
+	const account = await messenger.accounts.get(accountId)
 
 	if (!account || account.type !== 'imap') {
 		throw new Error('Invalid IMAP account')
 	}
 
-	const rootFolders = account.folders || []
 	const existingPaths = new Set()
 	const existingPathsLower = new Set() // For case-insensitive deduplication
+	const warnings = []
 
-	console.log('Analyzing existing folders:')
-	for (const folder of rootFolders) {
-		await getAllFolders(folder, existingPaths)
+	console.log('Analyzing existing folders...')
+	
+	// Use robust async traversal
+	const allFolders = await getAccountFolderList(account)
+	
+	for (const folder of allFolders) {
+		const cleanPath = folder.path.replace(/^\/+/, '')
+		existingPaths.add(cleanPath)
+		existingPathsLower.add(cleanPath.toLowerCase())
 	}
-	// Populate lower case set
-	existingPaths.forEach(p => existingPathsLower.add(p.toLowerCase()))
 
 	const requiredFolders = parseFilterRules(filterContent)
 	console.log('Required folders from filters:', requiredFolders.length)
+	console.log('Existing folders found:', existingPaths.size)
 
 	// Filter Missing
 	const missing = requiredFolders.filter(path => {
@@ -165,7 +182,8 @@ const analyzeMissingFolders = async (filterContent, accountId, mergeCase) => {
 		totalRules: countActionRules(filterContent),
 		totalLeafs: requiredFolders.length,
 		existing: existingPaths.size,
-		missing
+		missing,
+		warnings
 	}
 }
 
@@ -174,9 +192,7 @@ const createMissingFolders = async (accountId, folderPaths, port) => {
 	const results = { created: [], failed: [] }
 	let stopRequested = false
 
-	// CRITICAL: Sort folders by depth (number of slashes) and length.
-	// This ensures we create "Parent" before "Parent/Child".
-	// Otherwise, parallel processing fails.
+	// CRITICAL: Sort folders by depth
 	folderPaths.sort((a, b) => {
 		const depthA = a.split('/').length;
 		const depthB = b.split('/').length;
@@ -186,11 +202,6 @@ const createMissingFolders = async (accountId, folderPaths, port) => {
 
 	const disconnectHandler = () => { stopRequested = true }
 	port.onDisconnect.addListener(disconnectHandler)
-
-	// Sequential processing is actually safer for folder trees to ensure parents exist,
-	// but we can batch items of the same depth.
-	// For simplicity and stability, we use a small concurrency limit.
-	const BATCH_SIZE = 1 // Process 1 at a time to strictly guarantee parent existence without complex map rebuilds
 
 	for (let i = 0; i < folderPaths.length; i++) {
 		if (stopRequested) break;
@@ -267,7 +278,18 @@ messenger.runtime.onConnect.addListener((port) => {
 
 // Open UI tab when extension icon clicked
 messenger.browserAction.onClicked.addListener(async () => {
-	await messenger.tabs.create({ url: "folderMng.html" })
+	const url = messenger.runtime.getURL("folderMng.html")
+	
+	// Check if tab exists
+	const tabs = await messenger.tabs.query({ url })
+	
+	if (tabs && tabs.length > 0) {
+		const tab = tabs[0]
+		await messenger.windows.update(tab.windowId, { focused: true })
+		await messenger.tabs.update(tab.id, { active: true })
+	} else {
+		await messenger.tabs.create({ url: "folderMng.html" })
+	}
 })
 
 console.log('Filter Folder Creator: Background script loaded')

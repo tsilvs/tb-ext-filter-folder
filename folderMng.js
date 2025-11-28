@@ -29,30 +29,35 @@ let currentState = {
 	leafs: 0
 };
 
+// Helper to count folders recursively without relying on deprecated .subFolders property
+const countFoldersRecursively = async (folder) => {
+	let count = 1; // Count self
+	try {
+		const subFolders = await messenger.folders.getSubFolders(folder.id)
+		for (const sub of subFolders) {
+			count += await countFoldersRecursively(sub);
+		}
+	} catch (e) {
+		// Ignore folder access errors or leaf nodes
+	}
+	return count;
+}
+
 // Load existing folder count
 const loadExistingFolderCount = async () => {
 	const accountId = $('account').value
 	if (!accountId) return
 
 	try {
-		const accounts = await messenger.accounts.list()
-		const account = accounts.find(a => a.id === accountId)
+		const account = await messenger.accounts.get(accountId)
 		if (!account) return
 
-		const folders = await messenger.folders.getSubFolders(account, true)
 		let count = 0
-
-		const countFolders = async (folder) => {
-			count++
-			if (folder.subFolders) {
-				for (const sub of folder.subFolders) {
-					await countFolders(sub)
-				}
+		
+		if (account.folders) {
+			for (const rootFolder of account.folders) {
+				count += await countFoldersRecursively(rootFolder);
 			}
-		}
-
-		for (const folder of folders) {
-			await countFolders(folder)
 		}
 
 		currentState.existing = count;
@@ -129,6 +134,30 @@ const showStatus = (message, type) => {
 
 	statusArea.innerHTML = ''
 	statusArea.appendChild(div)
+}
+
+// Render warnings block
+const renderWarnings = (warnings, container) => {
+	const div = document.createElement('div')
+	div.className = 'status warning'
+	
+	const title = document.createElement('div')
+	title.style.fontWeight = 'bold'
+	title.textContent = messenger.i18n.getMessage('warningsHeader')
+	div.appendChild(title)
+
+	const ul = document.createElement('ul')
+	ul.style.margin = '8px 0 0 20px'
+	ul.style.padding = '0'
+	
+	warnings.forEach(w => {
+		const li = document.createElement('li')
+		li.textContent = w
+		ul.appendChild(li)
+	})
+	div.appendChild(ul)
+	
+	container.appendChild(div)
 }
 
 // Create results UI
@@ -379,6 +408,11 @@ $('mainForm').addEventListener('submit', async (e) => {
 			messenger.i18n.getMessage('analysisComplete', [String(response.missing.length)]),
 			response.missing.length > 0 ? 'info' : 'success'
 		)
+
+		if (response.warnings && response.warnings.length > 0) {
+			renderWarnings(response.warnings, results)
+		}
+
 		results.appendChild(createResultsUI(response))
 	} catch (err) {
 		btn.disabled = false
