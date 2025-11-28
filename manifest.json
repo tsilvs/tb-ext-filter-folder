@@ -18,8 +18,7 @@
 	],
 	"default_locale": "en",
 	"browser_action": {
-		"default_title": "Filter Folder Creator",
-		"default_popup": "folderMng.html"
+		"default_title": "Filter Folder Creator"
 	},
 	"background": {
 		"scripts": [

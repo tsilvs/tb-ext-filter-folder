@@ -265,4 +265,9 @@ messenger.runtime.onConnect.addListener((port) => {
 	}
 })
 
+// Open UI tab when extension icon clicked
+messenger.browserAction.onClicked.addListener(async () => {
+	await messenger.tabs.create({ url: "folderMng.html" })
+})
+
 console.log('Filter Folder Creator: Background script loaded')
