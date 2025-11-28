@@ -3,10 +3,19 @@
 		"message": "Filter Folder Creator"
 	},
 	"extensionDescription": {
-		"message": "Creates missing IMAP folders from filter rules"
+		"message": "Creates missing IMAP folders from filter rules and discovers new ones"
+	},
+	"tabMissingFolders": {
+		"message": "Missing Folders"
+	},
+	"tabRuleDiscovery": {
+		"message": "Rule Discovery"
 	},
 	"instructions": {
-		"message": "Locate msgFilterRules.dat in your profile folder (Tools → Account Settings → Server Settings → Browse), then upload or paste its content below."
+		"message": "Locate msgFilterRules.dat in your profile folder, then upload or paste below to find missing folders."
+	},
+	"discoveryInstructions": {
+		"message": "Scan an Inbox for senders without rules, and generate folder paths based on 'tld/domain/user' structure."
 	},
 	"existingFolders": {
 		"message": "Existing Folders"
@@ -14,26 +23,17 @@
 	"filterRules": {
 		"message": "Filter Rules"
 	},
-	"configuration": {
-		"message": "Configuration"
-	},
 	"imapAccount": {
 		"message": "IMAP Account:"
 	},
 	"uploadFile": {
 		"message": "Upload msgFilterRules.dat:"
 	},
-	"orPaste": {
-		"message": "Or paste content:"
-	},
 	"pastePlaceholder": {
-		"message": "Paste msgFilterRules.dat content here..."
+		"message": "msgFilterRules.dat content..."
 	},
 	"mergeCaseLabel": {
-		"message": "Merge case-insensitive duplicates (e.g. Work == work)"
-	},
-	"mergeCaseTooltip": {
-		"message": "If enabled, existing folders with different casing will count as a match."
+		"message": "Merge case-insensitive duplicates"
 	},
 	"analyzeMissing": {
 		"message": "Analyze Missing Folders"
@@ -45,60 +45,76 @@
 		"message": "Reading file..."
 	},
 	"loadedFile": {
-		"message": "✓ Loaded $FILE$ ($COUNT$ IMAP rules)",
-		"placeholders": {
-			"file": {
-				"content": "$1"
-			},
-			"count": {
-				"content": "$2"
-			}
-		}
+		"message": "✓ Loaded file ($COUNT$ rules)"
 	},
 	"analysisComplete": {
-		"message": "✓ Analysis complete: $COUNT$ missing folders",
-		"placeholders": {
-			"count": {
-				"content": "$1"
-			}
-		}
+		"message": "✓ Found $COUNT$ missing"
 	},
 	"allFoldersExist": {
 		"message": "✓ All folders exist!"
 	},
 	"caseSensitiveWarning": {
-		"message": "Note: Case-insensitive merging is OFF. 'Work' and 'work' will be treated as different folders."
+		"message": "Case-insensitive merging OFF."
+	},
+	"warningsHeader": {
+		"message": "Warnings:"
+	},
+	"scanSourceLabel": {
+		"message": "Scan Source Folder:"
+	},
+	"targetRootLabel": {
+		"message": "Target Root Path:"
+	},
+	"targetRootHint": {
+		"message": "Emails will be appended here. e.g. 'Archives/Clients' + 'uk/co/foo/bob'"
+	},
+	"inferRootBtn": {
+		"message": "Auto-Detect"
+	},
+	"scanAndDiscover": {
+		"message": "Scan for Missing Rules"
+	},
+	"loadingFolders": {
+		"message": "Loading folders..."
+	},
+	"scanningMessages": {
+		"message": "Scanning last $COUNT$ messages..."
+	},
+	"scanComplete": {
+		"message": "Found $COUNT$ new senders"
+	},
+	"discoveredEmail": {
+		"message": "Sender Email"
+	},
+	"proposedPath": {
+		"message": "Proposed Path"
+	},
+	"createSelectedFolders": {
+		"message": "Create Selected Folders"
+	},
+	"noNewSenders": {
+		"message": "No new senders found without rules."
+	},
+	"rootInferred": {
+		"message": "Inferred root: $PATH$"
+	},
+	"rootNotFound": {
+		"message": "Could not infer root from rules."
 	},
 	"createFolders": {
-		"message": "Create $COUNT$ Folders",
-		"placeholders": {
-			"count": {
-				"content": "$1"
-			}
-		}
+		"message": "Create $COUNT$ Folders"
 	},
 	"creating": {
 		"message": "Creating..."
 	},
 	"creatingProgress": {
-		"message": "Creating $CURRENT$/$TOTAL$: $PATH$",
-		"placeholders": {
-			"current": {
-				"content": "$1"
-			},
-			"total": {
-				"content": "$2"
-			},
-			"path": {
-				"content": "$3"
-			}
-		}
+		"message": "Creating $CURRENT$/$TOTAL$: $PATH$"
 	},
 	"stop": {
 		"message": "Stop"
 	},
 	"stoppedByUser": {
-		"message": "✗ Stopped by user"
+		"message": "Stopped"
 	},
 	"done": {
 		"message": "Done"
@@ -107,30 +123,22 @@
 		"message": "Retry"
 	},
 	"doneStatus": {
-		"message": "✓ Done: $CREATED$ created, $FAILED$ failed",
-		"placeholders": {
-			"created": {
-				"content": "$1"
-			},
-			"failed": {
-				"content": "$2"
-			}
-		}
+		"message": "Done: $CREATED$ ok, $FAILED$ failed"
 	},
 	"noAccounts": {
-		"message": "No IMAP accounts found"
+		"message": "No IMAP accounts"
 	},
 	"loadingAccounts": {
 		"message": "Loading accounts..."
 	},
 	"selectAccount": {
-		"message": "Please select an account"
+		"message": "Select an account"
 	},
 	"uploadOrPaste": {
-		"message": "Please upload or paste filter rules"
+		"message": "Provide filter rules"
 	},
 	"uniqueLeafs": {
-		"message": "Target Paths (Leafs)"
+		"message": "Leaf Paths"
 	},
 	"missing": {
 		"message": "Missing"
