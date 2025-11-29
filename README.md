@@ -3,11 +3,25 @@
 >
 > I plan rewriting it manually later.
 
-# Filter Folder Creator - Package & Install
+# Filter Folder Creator
 
-## Package Extension
+## Purpose
 
-### Option A: Load Temporary Add-on (Testing)
+Automate IMAP folder management via message filter rules.
+
+## Core Workflows
+
+1. **Synchronization**: Parse `msgFilterRules.dat` -> detect missing IMAP folders -> create them
+2. **Discovery**: Scan inbox -> extract sender domains -> propose folder hierarchy -> generate filter rules
+3. **Organization**: Auto-structure senders as `Domain/User` hierarchies
+
+More in [BRD](./doc/dev/reqs/BRD.md)
+
+## Installation
+
+### Package Extension
+
+#### Option A: Load Temporary Add-on (Testing)
 1. Open Thunderbird
 2. Go to `Tools → Developer Tools → Debug Add-ons` (or `about:debugging`)
 3. Click "This Thunderbird"
@@ -15,7 +29,7 @@
 5. Select `manifest.json` from your folder
 6. Extension loads immediately
 
-### Option B: Create XPI Package (Distribution)
+#### Option B: Create XPI Package (Distribution)
 ```bash
 cd filter-folder-creator
 zip -r ../filter-folder-creator.xpi *
@@ -26,9 +40,9 @@ Install XPI:
 2. Click gear icon → "Install Add-on From File"
 3. Select `filter-folder-creator.xpi`
 
-## Test Extension
+### Test Extension
 
-### Find msgFilterRules.dat:
+#### Find msgFilterRules.dat:
 1. Tools → Account Settings
 2. Select your IMAP account
 3. Click "Server Settings"
@@ -36,7 +50,7 @@ Install XPI:
 5. Navigate to that folder
 6. Find `msgFilterRules.dat`
 
-### Test Workflow:
+#### Test Workflow:
 1. Click extension icon in toolbar
 2. Select IMAP account from dropdown
 3. Upload `msgFilterRules.dat` or copy/paste content

@@ -11,12 +11,12 @@
 		}
 	},
 	"permissions": [
-		"accountsRead",
-		"messagesRead",
 		"tabs",
-		"accountsFolders",
 		"downloads",
-		"storage"
+		"storage",
+		"accountsRead",
+		"accountsFolders",
+		"messagesRead"
 	],
 	"options_ui": {
 		"page": "options.html",
