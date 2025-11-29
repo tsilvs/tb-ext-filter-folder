@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title data-i18n="extensionName">Loading...</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<main class="container">
+		<header><h1 data-i18n="extensionName"></h1></header>
+
+		<!-- Shared Config -->
+		<section class="card shared-config">
+			<label for="account" data-i18n="imapAccount"></label>
+			<select id="account"><option data-i18n="loadingAccounts">Loading...</option></select>
+
+			<label for="fileInput" data-i18n="uploadFile"></label>
+			<input type="file" id="fileInput" accept=".dat,text/plain">
+			
+			<textarea id="pasteInput" class="collapsed" data-i18n-placeholder="pastePlaceholder"></textarea>
+			<div class="meta-info"><span id="ruleCountDisplay"></span></div>
+		</section>
+
+		<div class="tabs-container">
+			<input type="radio" name="tabs" id="tabInputFolders" checked>
+			<input type="radio" name="tabs" id="tabInputDiscovery">
+			<nav class="tabs-nav">
+				<label for="tabInputFolders" class="tab-label" data-i18n="tabMissingFolders"></label>
+				<label for="tabInputDiscovery" class="tab-label" data-i18n="tabRuleDiscovery"></label>
+			</nav>
+
+			<!-- Tab 1: Missing Folders -->
+			<div class="tab-content" id="contentFolders">
+				<section class="card">
+					<form id="formAnalyze">
+						<section class="instruction" data-i18n="instructions"></section>
+						<div class="stats">
+							<aside class="stat">
+								<div class="stat-label" data-i18n="existingFolders"></div>
+								<output class="stat-value" id="statExisting">—</output>
+							</aside>
+							<aside class="stat">
+								<div class="stat-label" data-i18n="filterRules"></div>
+								<output class="stat-value" id="statRules">—</output>
+							</aside>
+						</div>
+						<div class="checkbox-group">
+							<input type="checkbox" id="mergeCase" checked>
+							<label for="mergeCase" class="inline" data-i18n="mergeCaseLabel"></label>
+						</div>
+						<div class="actions">
+							<button type="submit" id="btnAnalyze" disabled data-i18n="analyzeMissing"></button>
+							<aside class="status-area" id="statusFolders"></aside>
+						</div>
+					</form>
+				</section>
+
+				<section id="analysisResults" class="card">
+					<h2 data-i18n="resultsHeader">Results</h2>
+					<div class="stats">
+						<aside class="stat">
+							<div class="stat-label" data-i18n="uniqueLeafs"></div>
+							<output class="stat-value" id="resLeafs">—</output>
+						</aside>
+						<aside class="stat">
+							<div class="stat-label" data-i18n="missing"></div>
+							<output class="stat-value" id="resMissing">—</output>
+						</aside>
+					</div>
+					<div id="missingList" class="folder-list empty-state">
+						<span class="hint" data-i18n="analyzeToSeeFolders"></span>
+					</div>
+					<div class="actions">
+						<button id="btnCreateMissing" disabled data-i18n="createMissingFoldersBtn"></button>
+					</div>
+				</section>
+			</div>
+
+			<!-- Tab 2: Discovery -->
+			<div class="tab-content" id="contentDiscovery">
+				<section class="card">
+					<form id="formDiscovery">
+						<section class="instruction" data-i18n="discoveryInstructions"></section>
+						<label data-i18n="scanSourceLabel"></label>
+						<select id="scanSource"><option data-i18n="loadingFolders"></option></select>
+
+						<label data-i18n="targetRootLabel"></label>
+						<div class="input-group">
+							<input type="text" id="targetRoot">
+							<button type="button" id="btnInfer" data-i18n="inferRootBtn"></button>
+						</div>
+						<small class="hint" data-i18n="targetRootHint"></small>
+
+						<div class="actions">
+							<button type="submit" id="btnScan" class="primary" data-i18n="scanAndDiscover"></button>
+							<aside class="status-area" id="statusDiscovery"></aside>
+						</div>
+					</form>
+				</section>
+
+				<section id="discoveryResults" class="card discovery-list hidden">
+					<div class="list-header">
+						<input type="checkbox" id="selectAllDiscovery" checked>
+						<span class="sortable" data-sort="email"><span data-i18n="discoveredEmail"></span> <span class="sort-icon"></span></span>
+						<span class="sortable" data-sort="path"><span data-i18n="proposedPath"></span> <span class="sort-icon"></span></span>
+					</div>
+					<div id="discoveryList"></div>
+					<div class="actions">
+						<button id="btnCreateDiscovered" disabled data-i18n="btnCreateFoldersOnly"></button>
+						<button id="btnGenRules" class="secondary" disabled data-i18n="btnGenerateRulesOnly"></button>
+					</div>
+				</section>
+
+				<section id="genRulesArea" class="card hidden">
+					<h3 data-i18n="generatedRulesHeader"></h3>
+					<textarea id="genRulesOut" readonly></textarea>
+					<div class="actions">
+						<button id="btnDownload" data-i18n="downloadCombined"></button>
+					</div>
+				</section>
+			</div>
+		</div>
+	</main>
+	<script type="module" src="ui.js"></script>
+</body>
+</html>
