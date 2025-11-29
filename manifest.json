@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Filter Folder Creator",
-	"version": "2.0",
+	"version": "2.1",
 	"description": "Creates missing IMAP folders from filter rules",
 	"author": "Your Name",
 	"browser_specific_settings": {
@@ -15,8 +15,14 @@
 		"messagesRead",
 		"tabs",
 		"accountsFolders",
-		"downloads"
+		"downloads",
+		"storage"
 	],
+	"options_ui": {
+		"page": "options.html",
+		"open_in_tab": false,
+		"browser_style": false
+	},
 	"default_locale": "en",
 	"action": {
 		"default_title": "Filter Folder Creator"

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Options</title>
+	<link rel="stylesheet" href="style.css">
+	<style>
+		/* Critical: Override style.css flex layout for the options page context */
+		body { 
+			display: block !important; 
+			background: #fff; 
+			padding: 16px; 
+			min-height: auto !important; 
+			height: auto !important;
+		}
+		.container { 
+			max-width: 100%; 
+			padding: 0; 
+			margin: 0;
+		}
+		.card { 
+			box-shadow: none; 
+			border: 1px solid #eee; 
+			margin-bottom: 16px; 
+		}
+		h2 { 
+			font-size: 16px; 
+			border-bottom: 1px solid #eee; 
+			padding-bottom: 8px; 
+			margin-bottom: 16px; 
+			margin-top: 0;
+		}
+		.toast {
+			position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+			background: #323232; color: white; padding: 8px 16px; border-radius: 4px;
+			opacity: 0; transition: opacity 0.3s; pointer-events: none;
+			z-index: 100;
+		}
+		.toast.show { opacity: 1; }
+	</style>
+</head>
+<body>
+	<main class="container">
+		<form id="optionsForm">
+			<section class="card">
+				<h2>Analysis Settings</h2>
+				<div class="checkbox-group">
+					<input type="checkbox" id="mergeCase">
+					<label for="mergeCase" class="inline">Merge case-insensitive duplicates by default</label>
+				</div>
+			</section>
+
+			<section class="card">
+				<h2>Discovery Settings</h2>
+				
+				<label for="scanLimit">Messages to Scan</label>
+				<div class="hint">Higher limits take longer but find older senders.</div>
+				<select id="scanLimit">
+					<option value="100">100 Messages</option>
+					<option value="500">500 Messages</option>
+					<option value="1000">1,000 Messages</option>
+					<option value="2000">2,000 Messages</option>
+					<option value="5000">5,000 Messages (Slow)</option>
+				</select>
+
+				<label for="defaultRoot">Default Target Root Path</label>
+				<div class="hint">Auto-fills the 'Target Root' field (e.g., Archives/Clients).</div>
+				<input type="text" id="defaultRoot" placeholder="e.g. Archives">
+			</section>
+
+			<div class="actions">
+				<button type="submit" class="primary">Save Preferences</button>
+			</div>
+		</form>
+		<div id="toast" class="toast">Settings Saved</div>
+	</main>
+	<script src="options.js"></script>
+</body>
+</html>

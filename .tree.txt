@@ -1,9 +1,4 @@
 ./
-├── doc/
-│   └── dev/
-│       └── features/
-│           ├── 002.md
-│           └── 003.md
 ├── _locales/
 │   └── en/
 │       └── messages.json
@@ -15,6 +10,5 @@
 ├── manifest.json
 ├── README.md
 ├── style.css
-├── .tree.txt
 ├── ui.html
 └── ui.js

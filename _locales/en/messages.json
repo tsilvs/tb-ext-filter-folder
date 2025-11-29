@@ -36,6 +36,7 @@
 	"targetRootHint": { "message": "Emails will be appended here. e.g. 'Archives/Clients' + 'uk/co/foo/bob'" },
 	"inferRootBtn": { "message": "Auto-Detect" },
 	"scanAndDiscover": { "message": "Scan for Missing Rules" },
+	"scanAndDiscoverLimit": { "message": "Scan ($0$ Messages)" },
 	"loadingFolders": { "message": "Loading folders..." },
 	"scanningMessages": { "message": "Scanning last $COUNT$ messages..." },
 	"scanComplete": { "message": "Found $COUNT$ new senders" },
@@ -66,5 +67,6 @@
 	"selectAccount": { "message": "Select an account" },
 	"uploadOrPaste": { "message": "Provide filter rules" },
 	"uniqueLeafs": { "message": "Leaf Paths" },
-	"missing": { "message": "Missing" }
+	"missing": { "message": "Missing" },
+	"settingsTitle": { "message": "Settings" }
 }
