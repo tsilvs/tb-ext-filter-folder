@@ -16,42 +16,54 @@ const state = {
 // --- Helpers ---
 const setStatus = (id, msg, type = 'info') => {
 	const el = $(id)
-	el.innerHTML = `<div class="status ${type}">${msg}</div>`
+	if (el) el.innerHTML = `<div class="status ${type}">${msg}</div>`
 }
 
-const updateStat = (id, val) => $(id).textContent = val
+const updateStat = (id, val) => {
+	const el = $(id)
+	if (el) el.textContent = val
+}
 
 // --- Logic ---
 async function loadAccount(id) {
-	state.folders = (await MailClient.scanAccount(id)).folders
-	
+	// Visual feedback
+	updateStat('statTotal', 'Loading...')
+	updateStat('statLeafs', 'Loading...')
+
+	// Optimized: Single scan for both folder list and stats
+	const data = await MailClient.scanAccount(id)
+	state.folders = data.folders || []
+
 	// Stats
-	const stats = await MailClient.scanAccount(id) // Get fresh stats
-	let statText = `${stats.total} (${stats.leafs})`
-	try { statText = messenger.i18n.getMessage('statsFormat', [stats.total, stats.leafs]) } catch (e) {}
-	updateStat('statExisting', statText)
+	updateStat('statTotal', data.total)
+	updateStat('statLeafs', data.leafs)
 
 	// Populate Scan Source Dropdown
 	const sel = $('scanSource')
-	sel.innerHTML = ''
-	state.folders.forEach(f => {
-		const opt = new Option('—'.repeat(f.depth) + ' ' + f.name, f.id)
-		if (f.name === 'Inbox') opt.selected = true
-		sel.add(opt)
-	})
+	if (sel) {
+		sel.innerHTML = ''
+		state.folders.forEach(f => {
+			const opt = new Option('—'.repeat(f.depth) + ' ' + f.name, f.id)
+			if (f.name === 'Inbox') opt.selected = true
+			sel.add(opt)
+		})
+	}
 }
 
 function updateRuleStats(text) {
 	const rules = RuleEngine.parse(text)
 	updateStat('statRules', rules.length)
-	$('ruleCountDisplay').textContent = `${rules.length} rules`
-	$('btnAnalyze').disabled = !($('account').value && text)
+	const disp = $('ruleCountDisplay')
+	if (disp) disp.textContent = `${rules.length} rules`
+
+	const btn = $('btnAnalyze')
+	if (btn) btn.disabled = !($('account').value && text)
 }
 
 function renderDiscovery() {
 	const list = $('discoveryList')
 	list.innerHTML = ''
-	
+
 	// Sort
 	state.discovered.sort((a, b) => {
 		const va = a[state.sort.col] || '', vb = b[state.sort.col] || ''
@@ -66,22 +78,30 @@ function renderDiscovery() {
 			<input type="checkbox" ${item.selected ? 'checked' : ''}>
 			<div class="email">${item.email}</div>
 			<div class="path">${item.path}</div>`
-		
+
 		const toggle = () => {
 			item.selected = !item.selected
 			renderDiscovery() // Re-render to update classes/buttons
 		}
-		
+
 		row.querySelector('input').onclick = e => { e.stopPropagation(); toggle() }
 		row.onclick = toggle
 		list.appendChild(row)
 	})
 
 	const selected = state.discovered.filter(i => i.selected)
-	$('btnCreateDiscovered').disabled = $('btnGenRules').disabled = selected.length === 0
-	$('btnCreateDiscovered').textContent = messenger.i18n.getMessage('btnCreateFoldersOnly', [selected.length])
-	$('selectAllDiscovery').checked = state.discovered.length > 0 && state.discovered.every(i => i.selected)
-	
+	const btnCreate = $('btnCreateDiscovered')
+	const btnGen = $('btnGenRules')
+
+	if (btnCreate) {
+		btnCreate.disabled = selected.length === 0
+		btnCreate.textContent = messenger.i18n.getMessage('btnCreateFoldersOnly', [selected.length])
+	}
+	if (btnGen) btnGen.disabled = selected.length === 0
+
+	const selectAll = $('selectAllDiscovery')
+	if (selectAll) selectAll.checked = state.discovered.length > 0 && state.discovered.every(i => i.selected)
+
 	$('discoveryResults').classList.remove('hidden')
 }
 
@@ -89,10 +109,10 @@ function renderDiscovery() {
 async function runCreate(paths, statusId, btn) {
 	btn.disabled = true
 	setStatus(statusId, messenger.i18n.getMessage('creating'), 'progress')
-	
+
 	const port = messenger.runtime.connect({ name: 'create-folders' })
 	const accountId = $('account').value
-	
+
 	return new Promise(resolve => {
 		port.onMessage.addListener(msg => {
 			if (msg.type === 'progress') {
@@ -115,27 +135,44 @@ async function runCreate(paths, statusId, btn) {
 document.addEventListener('DOMContentLoaded', async () => {
 	// I18N
 	document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = messenger.i18n.getMessage(el.dataset.i18n))
-	
+
 	// Accounts
-	const accounts = (await messenger.accounts.list()).filter(a => a.type === 'imap')
+	let accounts = []
+	try {
+		accounts = (await messenger.accounts.list()).filter(a => a.type === 'imap')
+	} catch (e) {
+		console.error("Failed to list accounts", e)
+	}
+
 	const accSel = $('account')
 	accSel.innerHTML = ''
 	accounts.forEach(a => accSel.add(new Option(a.name, a.id)))
-	if (accounts.length) loadAccount(accounts[0].id)
-	
+
+	// Initial Load
+	if (accounts.length) {
+		loadAccount(accounts[0].id).catch(console.error)
+	}
+
+	// Initial check for pasted content (browser restore)
+	const pasteInput = $('pasteInput')
+	if (pasteInput && pasteInput.value) {
+		updateRuleStats(pasteInput.value)
+	}
+
 	// Listeners
-	accSel.onchange = () => loadAccount(accSel.value)
-	
+	accSel.onchange = () => loadAccount(accSel.value).catch(console.error)
+
 	$('fileInput').onchange = async e => {
 		const text = await e.target.files[0].text()
-		$('pasteInput').value = text
+		if (pasteInput) pasteInput.value = text
 		updateRuleStats(text)
 	}
 
-	$('pasteInput').oninput = e => updateRuleStats(e.target.value)
+	if (pasteInput) pasteInput.oninput = e => updateRuleStats(e.target.value)
 
 	// Analyze
-	$('formAnalyze').onsubmit = async e => {
+	const formAnalyze = $('formAnalyze')
+	if (formAnalyze) formAnalyze.onsubmit = async e => {
 		e.preventDefault()
 		const btn = $('btnAnalyze')
 		btn.disabled = true
@@ -151,11 +188,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 		state.missing = res.missing
 		updateStat('resLeafs', res.totalLeafs)
 		updateStat('resMissing', res.missing.length)
-		
+
 		const list = $('missingList')
 		list.innerHTML = ''
 		list.classList.toggle('empty-state', res.missing.length === 0)
-		
+
 		if (res.missing.length === 0) {
 			list.textContent = messenger.i18n.getMessage('allFoldersExist')
 			$('btnCreateMissing').disabled = true
@@ -173,7 +210,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 		btn.disabled = false
 	}
 
-	$('btnCreateMissing').onclick = () => runCreate(state.missing, 'statusFolders', $('btnCreateMissing'))
+	const btnCreateMissing = $('btnCreateMissing')
+	if (btnCreateMissing) btnCreateMissing.onclick = () => runCreate(state.missing, 'statusFolders', btnCreateMissing)
 
 	// Discovery
 	$('btnInfer').onclick = () => {
@@ -198,15 +236,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		const existingEmails = new Set(RuleEngine.parse($('pasteInput').value).flatMap(r => r.emails))
 		const root = $('targetRoot').value.replace(/\/$/, '')
-		
+
 		state.discovered = emails
 			.filter(e => !existingEmails.has(e))
 			.map(email => {
 				const suffix = RuleEngine.emailToPath(email)
-				return suffix ? { 
-					email, 
-					path: root ? `${root}/${suffix}` : suffix, 
-					selected: true 
+				return suffix ? {
+					email,
+					path: root ? `${root}/${suffix}` : suffix,
+					selected: true
 				} : null
 			})
 			.filter(Boolean)
@@ -216,7 +254,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 		$('genRulesArea').classList.remove('hidden')
 	}
 
-	$('selectAllDiscovery').onchange = e => {
+	const selectAll = $('selectAllDiscovery')
+	if (selectAll) selectAll.onchange = e => {
 		state.discovered.forEach(i => i.selected = e.target.checked)
 		renderDiscovery()
 	}
@@ -228,19 +267,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 		renderDiscovery()
 	})
 
-	$('btnCreateDiscovered').onclick = () => {
+	const btnCreateDiscovered = $('btnCreateDiscovered')
+	if (btnCreateDiscovered) btnCreateDiscovered.onclick = () => {
 		const paths = state.discovered.filter(i => i.selected).map(i => i.path)
-		runCreate(paths, 'statusDiscovery', $('btnCreateDiscovered'))
+		runCreate(paths, 'statusDiscovery', btnCreateDiscovered)
 	}
 
-	$('btnGenRules').onclick = () => {
+	const btnGenRules = $('btnGenRules')
+	if (btnGenRules) btnGenRules.onclick = () => {
 		const selected = state.discovered.filter(i => i.selected)
 		const base = RuleEngine.extractBaseUri($('pasteInput').value)
 		$('genRulesOut').value = selected.map(i => RuleEngine.generateBlock(base, i.email, i.path)).join('\n')
 		$('genRulesArea').scrollIntoView({ behavior: 'smooth' })
 	}
 
-	$('btnDownload').onclick = async () => {
+	const btnDownload = $('btnDownload')
+	if (btnDownload) btnDownload.onclick = async () => {
 		const combined = ($('pasteInput').value || '') + '\n' + ($('genRulesOut').value || '')
 		const url = URL.createObjectURL(new Blob([combined], { type: 'text/plain' }))
 		await messenger.downloads.download({ url, filename: 'msgFilterRules.dat', saveAs: true })

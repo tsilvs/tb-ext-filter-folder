@@ -227,7 +227,7 @@ label.inline {
 
 .stats {
 	display: grid;
-	grid-template-columns: repeat(2, 1fr);
+	grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
 	gap: 16px;
 	margin: 0 0 20px 0;
 }

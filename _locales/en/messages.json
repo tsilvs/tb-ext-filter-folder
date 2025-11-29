@@ -9,6 +9,8 @@
 	"discoveryInstructions": { "message": "Scan an Inbox for senders without rules, and generate folder paths based on 'tld/domain/user' structure." },
 
 	"existingFolders": { "message": "Existing Folders" },
+	"totalFolders": { "message": "Total Folders" },
+	"leafFolders": { "message": "Leaf Folders" },
 	"filterRules": { "message": "Filter Rules" },
 	"imapAccount": { "message": "IMAP Account:" },
 	"uploadFile": { "message": "Upload msgFilterRules.dat:" },
@@ -64,12 +66,5 @@
 	"selectAccount": { "message": "Select an account" },
 	"uploadOrPaste": { "message": "Provide filter rules" },
 	"uniqueLeafs": { "message": "Leaf Paths" },
-	"missing": { "message": "Missing" },
-	"statsFormat": {
-		"message": "$TOTAL$ ($LEAFS$ leafs)",
-		"placeholders": {
-			"TOTAL": { "content": "$1" },
-			"LEAFS": { "content": "$2" }
-		}
-	}
+	"missing": { "message": "Missing" }
 }
