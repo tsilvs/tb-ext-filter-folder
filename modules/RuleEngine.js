@@ -20,12 +20,8 @@ export const RuleEngine = {
 			if (!block.trim()) continue
 
 			// 1. Extract Action URI (Move to folder)
-			// Matches: action="Move to folder" ... actionValue="imap://..."
-			const actionMatch = block.match(/action="Move to folder"[\s\S]*?actionValue="([^"]+)"/)
-			if (!actionMatch) continue
-
-			const uri = actionMatch[1]
-			const path = this.uriToPath(uri)
+			const uri = this.extractUriFromBlock(block)
+			const path = uri ? this.uriToPath(uri) : null
 			if (!path) continue
 
 			// 2. Extract Emails from Conditions
@@ -46,6 +42,40 @@ export const RuleEngine = {
 			})
 		}
 		return rules
+	},
+
+	/**
+	 * Sorts the raw content of a msgFilterRules.dat file by target folder path.
+	 */
+	sortRawRules(content) {
+		const marker = 'name="';
+		const firstIdx = content.indexOf(marker);
+		if (firstIdx === -1) return content;
+
+		const header = content.substring(0, firstIdx);
+		// Split using lookahead to keep the delimiter at the start of each block
+		const rawRules = content.substring(firstIdx).split(/(?=name=")/);
+
+		rawRules.sort((a, b) => {
+			// Extract path or default to zzz to put non-movers at the end
+			const pathA = (this.extractPathFromBlock(a) || 'zzz').toLowerCase();
+			const pathB = (this.extractPathFromBlock(b) || 'zzz').toLowerCase();
+			return pathA.localeCompare(pathB);
+		});
+
+		return header + rawRules.join('');
+	},
+
+	extractUriFromBlock(block) {
+		// Matches: action="Move to folder" ... actionValue="imap://..."
+		// Note: actionValue might be on a new line
+		const match = block.match(/action="Move to folder"[\s\S]*?actionValue="([^"]+)"/);
+		return match ? match[1] : null;
+	},
+
+	extractPathFromBlock(block) {
+		const uri = this.extractUriFromBlock(block);
+		return uri ? this.uriToPath(uri) : null;
 	},
 
 	/**

@@ -222,6 +222,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 	}
 
 	if (pasteInput) pasteInput.oninput = e => updateRuleStats(e.target.value)
+	
+	// Sort Button for Input
+	$('btnSortInput').onclick = () => {
+		const val = pasteInput.value
+		if(!val) return
+		const sorted = RuleEngine.sortRawRules(val)
+		pasteInput.value = sorted
+		// Visual feedback
+		const btn = $('btnSortInput')
+		const originalText = btn.textContent
+		btn.textContent = '✓ Sorted'
+		setTimeout(() => btn.textContent = originalText, 1000)
+	}
 
 	// Analyze
 	const formAnalyze = $('formAnalyze')
@@ -339,7 +352,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	const btnDownload = $('btnDownload')
 	if (btnDownload) btnDownload.onclick = async () => {
-		const combined = ($('pasteInput').value || '') + '\n' + ($('genRulesOut').value || '')
+		let combined = ($('pasteInput').value || '') + '\n' + ($('genRulesOut').value || '')
+		
+		// Sort combined content if requested
+		if ($('chkSortDownload').checked) {
+			combined = RuleEngine.sortRawRules(combined)
+		}
+
 		const url = URL.createObjectURL(new Blob([combined], { type: 'text/plain' }))
 		await browserApi.downloads.download({ url, filename: 'msgFilterRules.dat', saveAs: true })
 	}

@@ -39,6 +39,7 @@
 									data-i18n-placeholder="pastePlaceholder"></textarea>
 
 				<div class="meta-info">
+					<button id="btnSortInput" type="button" class="link-button" data-i18n="sortRulesBtn"></button>
 					<span id="ruleCountDisplay"></span>
 				</div>
 			</section>
@@ -210,6 +211,12 @@
 						<h3 data-i18n="generatedRulesHeader"></h3>
 						<textarea id="genRulesOut"
 											readonly></textarea>
+						
+						<div class="checkbox-group" style="margin: 0 0 12px 0;">
+							<input type="checkbox" id="chkSortDownload" checked>
+							<label for="chkSortDownload" class="inline" data-i18n="sortCombinedLabel"></label>
+						</div>
+
 						<div class="actions">
 							<button id="btnDownload"
 											data-i18n="downloadCombined"></button>

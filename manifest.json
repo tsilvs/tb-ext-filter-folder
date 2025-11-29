@@ -3,10 +3,10 @@
 	"name": "Filter Folder Creator",
 	"version": "2.1",
 	"description": "Creates missing IMAP folders from filter rules",
-	"author": "Your Name",
+	"author": "Seva Tsiliurik",
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "filter-folder-creator@example.com",
+			"id": "tsilvs542@gmail.com",
 			"strict_min_version": "115.0"
 		}
 	},

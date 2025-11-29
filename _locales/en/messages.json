@@ -68,5 +68,7 @@
 	"uploadOrPaste": { "message": "Provide filter rules" },
 	"uniqueLeafs": { "message": "Leaf Paths" },
 	"missing": { "message": "Missing" },
-	"settingsTitle": { "message": "Settings" }
+	"settingsTitle": { "message": "Settings" },
+	"sortRulesBtn": { "message": "Sort Rules by Folder" },
+	"sortCombinedLabel": { "message": "Sort rules by folder path before downloading" }
 }

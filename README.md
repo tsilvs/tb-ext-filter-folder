@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> Made with Claude Sonnet 4.5 and Gemini 3
+>
+> I plan rewriting it manually later.
+
 # Filter Folder Creator - Package & Install
 
 ## Package Extension
