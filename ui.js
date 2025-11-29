@@ -17,7 +17,13 @@ const state = {
 	config: {          // Loaded from Storage
 		scanLimit: 500,
 		mergeCase: true,
-		defaultRoot: ''
+		defaultRoot: '',
+		// Filter Type Defaults
+		filterManual: true,
+		filterNewMail: true,
+		filterSending: false,
+		filterArchive: false,
+		filterPeriodic: false
 	}
 }
 
@@ -32,13 +38,28 @@ const updateStat = (id, val) => {
 	if (el) el.textContent = val
 }
 
+const getFilterTypeMask = () => {
+	return RuleEngine.calculateType({
+		manual: state.config.filterManual,
+		newMail: state.config.filterNewMail,
+		afterSending: state.config.filterSending,
+		archiving: state.config.filterArchive,
+		periodic: state.config.filterPeriodic
+	});
+};
+
 // --- Logic ---
 async function loadConfig() {
 	try {
 		const saved = await browserApi.storage.sync.get({
 			scanLimit: 500,
 			mergeCase: true,
-			defaultRoot: ''
+			defaultRoot: '',
+			filterManual: true,
+			filterNewMail: true,
+			filterSending: false,
+			filterArchive: false,
+			filterPeriodic: false
 		})
 		state.config = saved
 		
@@ -166,9 +187,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 	// Storage Listener for Real-time updates from the Modal/Options Page
 	browserApi.storage.onChanged.addListener((changes, area) => {
 		if (area === 'sync') {
-			if (changes.mergeCase) state.config.mergeCase = changes.mergeCase.newValue
-			if (changes.scanLimit) state.config.scanLimit = changes.scanLimit.newValue
-			if (changes.defaultRoot) state.config.defaultRoot = changes.defaultRoot.newValue
+			Object.keys(changes).forEach(key => {
+				state.config[key] = changes[key].newValue;
+			});
 			
 			// Reflect in UI immediately
 			if($('mergeCase')) $('mergeCase').checked = state.config.mergeCase
@@ -232,8 +253,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 		// Visual feedback
 		const btn = $('btnSortInput')
 		const originalText = btn.textContent
-		btn.textContent = '✓ Sorted'
+		btn.textContent = '✓ ' + btn.textContent
 		setTimeout(() => btn.textContent = originalText, 1000)
+	}
+
+	// Apply Defaults Button
+	$('btnApplyDefaults').onclick = () => {
+		const val = pasteInput.value
+		if(!val) return
+		
+		const typeMask = getFilterTypeMask()
+		const updated = RuleEngine.updateFilterTypes(val, typeMask)
+		
+		if (updated !== val) {
+			pasteInput.value = updated
+			const btn = $('btnApplyDefaults')
+			const originalText = btn.textContent
+			btn.textContent = '✓ Applied'
+			setTimeout(() => btn.textContent = originalText, 1000)
+		} else {
+			// No changes needed or empty
+		}
 	}
 
 	// Analyze
@@ -346,7 +386,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 	if (btnGenRules) btnGenRules.onclick = () => {
 		const selected = state.discovered.filter(i => i.selected)
 		const base = RuleEngine.extractBaseUri($('pasteInput').value)
-		$('genRulesOut').value = selected.map(i => RuleEngine.generateBlock(base, i.email, i.path)).join('\n')
+		// Use configured filter mask
+		const typeMask = getFilterTypeMask()
+		$('genRulesOut').value = selected.map(i => RuleEngine.generateBlock(base, i.email, i.path, typeMask)).join('\n')
 		$('genRulesArea').scrollIntoView({ behavior: 'smooth' })
 	}
 

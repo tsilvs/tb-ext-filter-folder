@@ -58,6 +58,14 @@ header.main-header {
 	align-items: center;
 }
 
+.btn-group {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.sep { color: #ccc; font-size: 10px; }
+
 /* CSS Tabs Implementation */
 .tabs-container {
 	display: flex;

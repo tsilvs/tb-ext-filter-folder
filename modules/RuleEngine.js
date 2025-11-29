@@ -4,6 +4,16 @@
  */
 
 export const RuleEngine = {
+	// Thunderbird Filter Type Bitmasks
+	TYPES: {
+		NEW_MAIL: 1,         // Getting New Mail (Before Junk)
+		NEW_MAIL_JUNK: 2,    // Getting New Mail (After Junk) - Note: Often combined with 1 in modern TB
+		MANUAL: 16,          // Manually Run
+		SENDING: 32,         // After Sending
+		ARCHIVE: 64,         // Archiving
+		PERIODIC: 128        // Periodically
+	},
+
 	/**
 	 * Main parser: Extracts structured data from raw file content.
 	 * @param {string} content - Raw msgFilterRules.dat content
@@ -130,15 +140,40 @@ export const RuleEngine = {
 	},
 
 	/**
+	 * Calculate the 'type' bitmask based on boolean options
+	 * @param {Object} options - { manual, newMail, afterSending, archiving, periodic }
+	 * @returns {number}
+	 */
+	calculateType(options) {
+		let val = 0;
+		if (options.newMail) val += this.TYPES.NEW_MAIL;
+		if (options.manual) val += this.TYPES.MANUAL;
+		if (options.afterSending) val += this.TYPES.SENDING;
+		if (options.archiving) val += this.TYPES.ARCHIVE;
+		if (options.periodic) val += this.TYPES.PERIODIC;
+		// Default to 17 (Manual + New Mail) if nothing selected to avoid broken rules
+		return val === 0 ? 17 : val;
+	},
+
+	/**
 	 * Generate msgFilterRules.dat entry
 	 */
-	generateBlock(baseUri, email, path) {
+	generateBlock(baseUri, email, path, typeValue = 17) {
 		const fullUri = `${baseUri}/${path.split('/').map(encodeURIComponent).join('/')}`
 		return `name="From ${email}"
 enabled="yes"
-type="17"
+type="${typeValue}"
 action="Move to folder"
 actionValue="${fullUri}"
 condition="AND (from,contains,${email})"`
+	},
+
+	/**
+	 * Bulk update the 'type' attribute in a raw rules content string
+	 */
+	updateFilterTypes(content, newTypeValue) {
+		// Regex to find type="number" inside entries
+		// We use a global replace.
+		return content.replace(/type="\d+"/g, `type="${newTypeValue}"`);
 	}
 }

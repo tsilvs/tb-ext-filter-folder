@@ -69,6 +69,7 @@
 	"uniqueLeafs": { "message": "Leaf Paths" },
 	"missing": { "message": "Missing" },
 	"settingsTitle": { "message": "Settings" },
-	"sortRulesBtn": { "message": "Sort Rules by Folder" },
+	"sortRulesBtn": { "message": "Sort Rules" },
+	"applyDefaultsBtn": { "message": "Apply Defaults" },
 	"sortCombinedLabel": { "message": "Sort rules by folder path before downloading" }
 }

@@ -37,6 +37,12 @@
 			z-index: 100;
 		}
 		.toast.show { opacity: 1; }
+		.checkbox-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 8px;
+		}
+		.checkbox-group { margin-top: 8px; }
 	</style>
 </head>
 <body>
@@ -47,6 +53,34 @@
 				<div class="checkbox-group">
 					<input type="checkbox" id="mergeCase">
 					<label for="mergeCase" class="inline">Merge case-insensitive duplicates by default</label>
+				</div>
+			</section>
+
+			<section class="card">
+				<h2>Default Filter Triggers</h2>
+				<div class="hint" style="margin-bottom: 12px;">Applies to generated rules and the "Apply defaults" action.</div>
+				
+				<div class="checkbox-grid">
+					<div class="checkbox-group">
+						<input type="checkbox" id="optManual">
+						<label for="optManual" class="inline">Manually Run</label>
+					</div>
+					<div class="checkbox-group">
+						<input type="checkbox" id="optNewMail">
+						<label for="optNewMail" class="inline">Getting New Mail</label>
+					</div>
+					<div class="checkbox-group">
+						<input type="checkbox" id="optSending">
+						<label for="optSending" class="inline">After Sending</label>
+					</div>
+					<div class="checkbox-group">
+						<input type="checkbox" id="optArchive">
+						<label for="optArchive" class="inline">Archiving</label>
+					</div>
+					<div class="checkbox-group">
+						<input type="checkbox" id="optPeriodic">
+						<label for="optPeriodic" class="inline">Periodically (10m)</label>
+					</div>
 				</div>
 			</section>
 
