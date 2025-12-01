@@ -46,9 +46,9 @@ CSS:
 **Input:** User selects IMAP account + uploads/pastes `msgFilterRules.dat`
 
 **Process:**
-- [x] Parse filter file -> extract `imap://`/`mailbox://` URIs
+- [x] Parse filter file `->` extract `imap://`/`mailbox://` URIs
 - [x] Normalize to readable paths
-- [x] Recursively scan IMAP account -> build folder cache
+- [x] Recursively scan IMAP account `->` build folder cache
 - [x] Compare required vs existing paths
 - [x] Optional case-insensitive merge
 
@@ -70,8 +70,35 @@ CSS:
 **Output:**
 - [x] Interactive list with proposed paths
 - [x] **Action A:** Batch-create folders
-- [x] **Action B:** Generate filter rules -> append to target root
+- [x] **Action B:** Generate filter rules `->` append to target root
 - [x] Download combined `.dat` file
+
+### Email to Directory association
+
+
+### Automation
+
+
+### `.dat` storage / caching
+
++ [ ] Sore and reuse uploaded rule file rules AS RULES (parsed entities) per account
++ [ ] Warn user that it's separate from the file itself and needs to be updated manually (if it should, not sure if it can be read directly from JS Extension context API)
+
+### Online Email Filter Rules Management
+
+**Input:** Selected email account + stored necessary API auth + stored filter rules from local rules + local rules to remote rules mapping per property
+
+Flow: `Remote rules <-> Local rules`
+
+**Process:**
++ [ ] Request filter rules from online email account by appropriate endpoint via appropriate request
++ [ ] Display effective remote filter rules in a list
++ [ ] Allow to manage the list of filters
++ [ ] Map local rules to remote rules
+
+**Output:**
++ [ ] Downloaded & merged remote rules
++ [ ] Updated remote rules from local ones
 
 ### Configuration
 
@@ -91,10 +118,10 @@ Bitmask calculation for filter execution:
 
 ##### Features
 
-- [x] Bulk-update trigger settings
-- [x] Sort rules alphabetically by target path
-- [x] Persist preferences: `scanLimit`, `defaultRoot`, `filterTriggers`, `mergeCase`
-- [x] Modal UI + Add-on Manager access
++ [x] Bulk-update trigger settings
++ [x] Sort rules alphabetically by target path
++ [x] Persist preferences: `scanLimit`, `defaultRoot`, `filterTriggers`, `mergeCase`
++ [x] Modal UI + Add-on Manager access
 
 ## Non-Functional Requirements
 
@@ -112,17 +139,23 @@ Bitmask calculation for filter execution:
 
 ### Code Style
 
-- [x] **Error Handling:** Graceful handling of permission errors, "folder exists" treated as success
++ [ ] **Functional Programming style**: Avoid OOP, prioritize pure functions, currying, composition, clojures. Namespaces are allowed.
++ [x] **Pure Functions:** Utility modules must contain only pure functions - no side effects
++ [x] **Magic Numbers:** No hardcoded values - extract to named constants or config
++ [ ] **Parametrization:** Constants shouldn't be directly referenced from global / parent context, should be instead passed as an argument / parameter to a function
++ [ ] **Configuration:** All params in configs
++ [x] **Error Handling:** Graceful handling of permission errors, "folder exists" treated as success
 + [x] **Linting:** ESLint with strict ruleset (no-var, prefer-const, no-eval)
 + [x] **Naming Conventions:** camelCase functions/variables, PascalCase classes, SCREAMING_SNAKE_CASE constants
-+ [x] **Pure Functions:** Utility modules must contain only pure functions - no side effects
 + [x] **Documentation:** JSDoc for public APIs - param types, return types, examples
 + [x] **Error Messages:** User-facing errors must be actionable, technical errors logged with stack traces
-+ [x] **Magic Numbers:** No hardcoded values - extract to named constants or config
++ [ ] **Reusable code:** As much DRY / code reuse as possible. High modularity of code chunks for combinations is encouraged
 
 ### Accessibility
 
-- [x] **I18n:** `data-i18n` + `messenger.i18n.getMessage`
++ [x] **I18n:** `data-i18n` + `messenger.i18n.getMessage`
++ [ ] **Automation**: Most actions that can be automated should be automated, according to user-defined rules.
++ [ ] **List management**: Every list should support applicable bulk actions: selection, CRUD, sorting, etc.
 + [x] **Keyboard Navigation:** All interactive elements must be keyboard-accessible (tab order, Enter/Space activation)
 + [x] **Screen Reader:** ARIA labels/roles for dynamic content updates, loading states, error messages
 + [ ] **Focus Management:** Focus must be managed during modal open/close, async operations completion
