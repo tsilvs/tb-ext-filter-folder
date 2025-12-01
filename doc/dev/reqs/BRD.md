@@ -1,6 +1,6 @@
 # Thunderbird Filter Folder Creator BRD
 
-**Version:** 2.1  
+**Version:** 2.2
 **Platform:** [Mozilla Thunderbird](https://www.thunderbird.net/) (Gecko 115.0+)
 
 ## Purpose
@@ -17,20 +17,20 @@ Automate IMAP folder management via message filter rules.
 
 ### Architecture
 
-- ES6 Modules (import/export)
-- async/await for heavy operations
-- Separation: utility modules, API wrappers, error handlers
-- Pure HTML/CSS/JS (minimal JS)
++ ES6 Modules (import/export)
++ async/await for heavy operations
++ Separation: utility modules, API wrappers, error handlers
++ Pure HTML/CSS/JS (minimal JS)
 
 ### APIs
 
-- `messenger` (Thunderbird-specific)
-- `browser` (WebExtension standard)
-- `browser.storage.sync` (state persistence)
-- In-memory state (runtime data)
-- `runtime.sendMessage` (stateless requests)
-- `runtime.connect` (long-running ops)
-- **Background Worker** for business logic (UI-independent)
++ `messenger` (Thunderbird-specific)
++ `browser` (WebExtension standard)
++ `browser.storage.sync` (state persistence)
++ In-memory state (runtime data)
++ `runtime.sendMessage` (stateless requests)
++ `runtime.connect` (long-running ops)
++ **Background Worker** for business logic (UI-independent)
 
 ### Styling
 
@@ -46,47 +46,90 @@ CSS:
 **Input:** User selects IMAP account + uploads/pastes `msgFilterRules.dat`
 
 **Process:**
-- [x] Parse filter file `->` extract `imap://`/`mailbox://` URIs
-- [x] Normalize to readable paths
-- [x] Recursively scan IMAP account `->` build folder cache
-- [x] Compare required vs existing paths
-- [x] Optional case-insensitive merge
++ [x] Parse filter file → extract `imap://`/`mailbox://` URIs
++ [x] Normalize to readable paths
++ [x] Recursively scan IMAP account → build folder cache
++ [x] Compare required vs existing paths
++ [x] Optional case-insensitive merge
 
 **Output:**
-- [x] Stats: folder count, leaf folders, rule count
-- [x] List missing paths
-- [x] Batch-create button (recursive: `A -> A/B -> A/B/C`)
++ [x] Stats: folder count, leaf folders, rule count
++ [x] List missing paths
++ [x] Batch-create button (recursive: A → A/B → A/B/C)
 
 ### Rule Discovery
 
 **Input:** Source folder + scan limit (100-5000) + target root path
 
 **Process:**
-- [x] Scan last N messages
-- [x] Extract unique "From" addresses
-- [x] Exclude addresses with existing rules
-- [x] Generate reverse-domain paths (`bob@google.com` -> `com/google/bob`)
++ [x] Scan last N messages
++ [x] Extract unique "From" addresses
++ [x] Exclude addresses with existing rules
++ [x] Generate reverse-domain paths (`bob@google.com` -> `com/google/bob`)
 
 **Output:**
-- [x] Interactive list with proposed paths
-- [x] **Action A:** Batch-create folders
-- [x] **Action B:** Generate filter rules `->` append to target root
-- [x] Download combined `.dat` file
++ [x] Interactive list with proposed paths
++ [x] **Action A:** Batch-create folders
++ [x] **Action B:** Generate filter rules `->` append to target root
++ [x] Download combined `.dat` file
 
-### Email to Directory association
+### Email to Directory Association
 
+**Purpose:** Standardize how email addresses map to filesystem paths to ensure organized hierarchies.
+
+**Requirements:**
++ [x] **Reverse Domain Mapping:** Convert `user@sub.domain.tld` -> `tld/domain/sub/user`
++ [ ] **Special Character Handling:** Sanitize path segments (replace `:`, `/`, `\` with `_`)
++ [ ] **Collision Resolution:** Handle case-insensitive duplicates (e.g. `User@domain` vs `user@domain`)
++ [ ] **Custom Mapping:** Allow user to define custom root paths or regex overrides for specific contacts (can have multiple emails), emails or domains
 
 ### Automation
 
+**Purpose:** Reduce manual intervention for keeping folders and rules in sync.
 
-### `.dat` storage / caching
+**Requirements:**
++ [ ] **Periodic Background Scan:** Run discovery logic every N minutes (configurable)
++ [ ] **Notification:** Alert user when new unmapped senders exceed a threshold
++ [ ] **Auto-Create:** Option to automatically create missing folders if they match high-confidence patterns
++ [x] **Trigger Automation:** Automatically apply selected trigger bitmasks to generated rules
 
-+ [ ] Sore and reuse uploaded rule file rules AS RULES (parsed entities) per account
-+ [ ] Warn user that it's separate from the file itself and needs to be updated manually (if it should, not sure if it can be read directly from JS Extension context API)
+### Data Persistence & Caching
+
+**Purpose:** Maintain state across browser restarts and efficiently handle large rule files.
+
+**Requirements:**
++ [ ] **Rule Storage:** Persist uploaded `msgFilterRules.dat` content in `browser.storage.local` to survive extension reloads
++ [ ] **Context Awareness:** Associate stored rules with specific IMAP account IDs
++ [ ] **Staleness Warning:** Visual indicator if the stored rules might be out of sync with the filesystem (timestamp check if possible, or manual "Last updated" label)
++ [ ] **Export/Backup:** Allow exporting the internal state configuration to JSON
 
 ### Online Email Filter Rules Management
 
-**Input:** Selected email account + stored necessary API auth + stored filter rules from local rules + local rules to remote rules mapping per property
+**Purpose:** Bridge local Thunderbird rules with server-side filters (e.g. Gmail Filters) to ensure processing happens even when the client is offline.
+
+**Requirements:**
++ [ ] **Remote Fetch:** Connect to supported providers to fetch active server-side rules
++ [ ] **Rule Translation:** Convert Thunderbird filter syntax to Sieve/XML format
++ [ ] **Sync Direction:** Choose between "Push to Server" (Overwrite remote) or "Pull from Server" (Update local)
++ [ ] **Auth Management:** Securely store OAuth tokens or credentials for rule management access
+
+**Default Supported Providers:**
++ [ ] Gmail
++ [ ] Yandex
++ [ ] Yahoo
+
+Should be extensible through custom:
++ [ ] OpenAPI YAML Spec input with mappings to generic email rule management actions
++ [ ] local rules to remote rules mapping per property
+
+#### Process
+
+**Input:**
++ Selected email account
++ Email server API Mapping config
++ stored necessary API auth
++ stored filter rules from local rules
++ local rules to remote rules mapping per property
 
 Flow: `Remote rules <-> Local rules`
 
@@ -139,7 +182,7 @@ Bitmask calculation for filter execution:
 
 ### Code Style
 
-+ [ ] **Functional Programming style**: Avoid OOP, prioritize pure functions, currying, composition, clojures. Namespaces are allowed.
++ [ ] **Functional Programming style**: Avoid OOP, prioritize pure functions, currying, composition, closures. Namespaces are allowed.
 + [x] **Pure Functions:** Utility modules must contain only pure functions - no side effects
 + [x] **Magic Numbers:** No hardcoded values - extract to named constants or config
 + [ ] **Parametrization:** Constants shouldn't be directly referenced from global / parent context, should be instead passed as an argument / parameter to a function
