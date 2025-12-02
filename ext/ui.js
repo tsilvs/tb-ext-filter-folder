@@ -172,7 +172,7 @@ async function runCreate(paths, statusId, btn) {
 				btn.disabled = false
 			}
 		})
-		port.postMessage({ action: 'create', accountId, folders: paths })
+		port.postMessage({ action: 'create', accountId, paths })
 	})
 }
 

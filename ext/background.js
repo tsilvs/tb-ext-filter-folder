@@ -48,8 +48,10 @@ async function createFolders(data, port) {
 	// Refresh folder cache
 	const { folders } = await MailClient.scanAccount(accountId)
 	const folderMap = new Map(folders.map(f => [f.cleanPath.toLowerCase(), f]))
-	const account = await messenger.accounts.get(accountId)
-	const inbox = account.folders.find(f => f.type === 'inbox') || account.folders[0]
+	
+	// Find inbox from the folders we already retrieved
+	const inbox = folders.find(f => f.type === 'inbox') || folders[0]
+	if (!inbox) throw new Error('No inbox folder found')
 
 	for (let i = 0; i < paths.length; i++) {
 		const path = paths[i]
