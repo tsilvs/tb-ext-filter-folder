@@ -213,6 +213,23 @@
 					<section id="genRulesArea"
 									 class="card hidden">
 						<h3 data-i18n="generatedRulesHeader"></h3>
+						
+						<div id="accountMismatchWarning" class="status warning" style="display: none; margin-bottom: 12px;">
+							<strong>⚠ Account Mismatch Detected</strong><br>
+							Selected Account: <code id="mismatchAccountUri"></code><br>
+							Rules Account: <code id="mismatchRulesUri"></code>
+						</div>
+						
+						<fieldset id="ruleGenerationOptions">
+							<div class="checkbox-group">
+								<input type="checkbox" id="chkOverrideAccount" disabled
+									title="Enable when account mismatch is detected">
+								<label for="chkOverrideAccount" class="inline">
+									Override with selected account URI
+								</label>
+							</div>
+						</fieldset>
+						
 						<textarea id="genRulesOut"
 											readonly></textarea>
 						

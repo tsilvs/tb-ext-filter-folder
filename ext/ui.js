@@ -14,6 +14,8 @@ const state = {
 	missing: [],       // Analyzed missing paths
 	discovered: [],    // Scanned emails {email, path, selected}
 	sort: { col: 'email', dir: 1 },
+	currentAccount: null, // Current account object with identities
+	accountBaseUri: null, // imap://user@host from current account
 	config: {          // Loaded from Storage
 		scanLimit: 500,
 		mergeCase: true,
@@ -48,6 +50,25 @@ const getFilterTypeMask = () => {
 	});
 };
 
+// Account/Rules Validation
+function validateAccountRulesMatch() {
+	const pasteInput = $('pasteInput')
+	if (!pasteInput || !pasteInput.value || !state.accountBaseUri) return null
+	
+	const rulesBaseUri = RuleEngine.extractBaseUri(pasteInput.value)
+	
+	// If rules have placeholder or no URI, no mismatch
+	if (!rulesBaseUri || rulesBaseUri === "imap://REPLACE_ME") return null
+	
+	// Compare base URIs (case-insensitive)
+	const match = state.accountBaseUri.toLowerCase() === rulesBaseUri.toLowerCase()
+	
+	return match ? null : {
+		accountUri: state.accountBaseUri,
+		rulesUri: rulesBaseUri
+	}
+}
+
 // --- Logic ---
 async function loadConfig() {
 	try {
@@ -80,8 +101,23 @@ async function loadAccount(id) {
 	updateStat('statTotal', 'Loading...')
 	updateStat('statLeafs', 'Loading...')
 
+	// Get account data and folder structure
 	const data = await MailClient.scanAccount(id)
 	state.folders = data.folders || []
+	
+	// Store account object and construct base URI
+	try {
+		state.currentAccount = await browserApi.accounts.get(id)
+		if (state.currentAccount.identities && state.currentAccount.identities.length > 0) {
+			const email = state.currentAccount.identities[0].email
+			state.accountBaseUri = `imap://${email}`
+		} else {
+			state.accountBaseUri = "imap://REPLACE_ME"
+		}
+	} catch (e) {
+		console.error("Failed to get account details", e)
+		state.accountBaseUri = "imap://REPLACE_ME"
+	}
 
 	updateStat('statTotal', data.total)
 	updateStat('statLeafs', data.leafs)
@@ -385,11 +421,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const btnGenRules = $('btnGenRules')
 	if (btnGenRules) btnGenRules.onclick = () => {
 		const selected = state.discovered.filter(i => i.selected)
-		const base = RuleEngine.extractBaseUri($('pasteInput').value)
+		
+		// Check for account/rules mismatch
+		const mismatch = validateAccountRulesMatch()
+		const warningEl = $('accountMismatchWarning')
+		const overrideCheckbox = $('chkOverrideAccount')
+		
+		if (mismatch) {
+			// Show warning
+			$('mismatchAccountUri').textContent = mismatch.accountUri
+			$('mismatchRulesUri').textContent = mismatch.rulesUri
+			warningEl.style.display = 'block'
+			
+			// Enable override checkbox
+			overrideCheckbox.disabled = false
+			overrideCheckbox.title = "Check to use selected account URI instead of pasted rules URI"
+			
+			// Default to override checked for better UX
+			if (!overrideCheckbox.hasAttribute('data-user-set')) {
+				overrideCheckbox.checked = true
+			}
+		} else {
+			// Hide warning
+			warningEl.style.display = 'none'
+			overrideCheckbox.disabled = true
+			overrideCheckbox.title = "Enable when account mismatch is detected"
+		}
+		
+		// Determine which base URI to use
+		let base
+		if (mismatch && overrideCheckbox.checked) {
+			// User wants to override with selected account
+			base = state.accountBaseUri || "imap://REPLACE_ME"
+		} else {
+			// Use rules base URI if available, otherwise account
+			const rulesBase = RuleEngine.extractBaseUri($('pasteInput').value)
+			base = (rulesBase && rulesBase !== "imap://REPLACE_ME") ? rulesBase : (state.accountBaseUri || "imap://REPLACE_ME")
+		}
+		
 		// Use configured filter mask
 		const typeMask = getFilterTypeMask()
 		$('genRulesOut').value = selected.map(i => RuleEngine.generateBlock(base, i.email, i.path, typeMask)).join('\n')
 		$('genRulesArea').scrollIntoView({ behavior: 'smooth' })
+	}
+	
+	// Track user interaction with override checkbox
+	const overrideCheckbox = $('chkOverrideAccount')
+	if (overrideCheckbox) {
+		overrideCheckbox.onchange = () => {
+			overrideCheckbox.setAttribute('data-user-set', 'true')
+			// Re-trigger rule generation to update with new setting
+			if ($('btnGenRules')) $('btnGenRules').click()
+		}
 	}
 
 	const btnDownload = $('btnDownload')

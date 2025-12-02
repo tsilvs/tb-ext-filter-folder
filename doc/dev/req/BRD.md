@@ -179,6 +179,7 @@ Bitmask calculation for filter execution:
 + [ ] **Error Recovery:** Background operations must persist progress state - resumable after crash/restart
 + [x] **Memory Constraints:** Folder scanning must use streaming/pagination - avoid loading entire message lists into memory
 + [ ] **Dependency Injection:** API wrappers must be injectable for testing/mocking
++ [ ] **Consistent data formatting:** App should store, manage and follow common rules of data formatting, e.g. if a file format requires URL Encoded escaping of special symbols in a field - it should always be applied.
 
 ### Code Style
 
@@ -188,20 +189,43 @@ Bitmask calculation for filter execution:
 + [ ] **Parametrization:** Constants shouldn't be directly referenced from global / parent context, should be instead passed as an argument / parameter to a function
 + [ ] **Configuration:** All params in configs
 + [x] **Error Handling:** Graceful handling of permission errors, "folder exists" treated as success
-+ [x] **Linting:** ESLint with strict ruleset (no-var, prefer-const, no-eval)
 + [x] **Naming Conventions:** camelCase functions/variables, PascalCase classes, SCREAMING_SNAKE_CASE constants
 + [x] **Documentation:** JSDoc for public APIs - param types, return types, examples
 + [x] **Error Messages:** User-facing errors must be actionable, technical errors logged with stack traces
 + [ ] **Reusable code:** As much DRY / code reuse as possible. High modularity of code chunks for combinations is encouraged
+<!-- + [x] **Linting:** ESLint with strict ruleset (no-var, prefer-const, no-eval) -->
 
-### Accessibility
+#### Per tech
+
+##### HTML
+
++ [ ] **Reusable code:** If a form can be an `iframe` - make it so. In context of web extensions, `iframe`s JS still should communicate with `background` service worker "backend".
+
+##### CSS
+
++ [ ] **Reusable code:** Variables for different themes, media query styles (e.g. screen size specific layouts) and such things can be stored in separate style files. Never embed CSS into HTML directly, always use `<link rel="stylesheet" href="styleFile.css">`
+
+##### JS
+
++ [ ] **Reusable code:** Store reusable code in importable ES modules.
+
+### UX
+
++ [ ] **Automation**: Most actions that can be automated should be automated, according to user-defined rules.
++ [ ] **List management**: Every list should support applicable bulk actions: selection, CRUD, sorting, etc. Lists should also be quickly foldable with `details > summary` or CSS Checkbox tricks.
++ [ ] **Every input is a form:** All inputs should be always wrapped in an appropriately ID'd `form`, with `fieldset` when needed, and `submit` JS handling mechanism. Design form submit code to trigger implicit `iframe` reloading when appropriate.
++ [ ] **Form validation:** All forms should be validated.
++ [ ] **Predictable persistent layout:** All elements inputs should be visible by default but disabled when irrelevant with a standard HTML `title` attribute hover tip explaining the reason why it can be disabled.
++ [ ] **Input state changes allow process restart:** User input in starting input fields should always trigger runtime state refresh and allow running the processes again.
++ [ ] **Process controls:** Any background process should always be controllable with a starter, a pauser, an interruptor and a canceller control.
++ [ ] **GUI & Keyboard controls parity:** Any GUI control element should be reasonably exposed to a native keyboard hotkey / shortcut engine. Tab order attributes and CSS focus highlights for GUI keyboard navigation are necessary too.
++ [ ] **Process controls always grouped with process status displays:** Any input that controls a background process should always be visually near the status display.
+
+#### Accessibility
 
 + [x] **I18n:** `data-i18n` + `messenger.i18n.getMessage`
-+ [ ] **Automation**: Most actions that can be automated should be automated, according to user-defined rules.
-+ [ ] **List management**: Every list should support applicable bulk actions: selection, CRUD, sorting, etc.
 + [x] **Keyboard Navigation:** All interactive elements must be keyboard-accessible (tab order, Enter/Space activation)
 + [x] **Screen Reader:** ARIA labels/roles for dynamic content updates, loading states, error messages
 + [ ] **Focus Management:** Focus must be managed during modal open/close, async operations completion
 + [x] **Visual Indicators:** Loading/progress states must have both visual and text indicators
 + [x] **Color Contrast:** UI must meet WCAG 2.1 AA standards (4.5:1 text, 3:1 non-text)
-
