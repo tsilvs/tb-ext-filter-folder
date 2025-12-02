@@ -89,7 +89,6 @@
 - ✅ Converted namespace object to pure functions
 - ✅ Implemented dependency injection pattern
 - ✅ Removed all hardcoded constants (using imports)
-- ✅ Created curried functions for partial application
 - ✅ Separated concerns into logical sections:
   - URI & Path Operations
   - Email Extraction
@@ -112,7 +111,6 @@
 **Refactoring Achievements:**
 - ✅ Converted namespace object to pure functions with dependency injection
 - ✅ All functions accept `api` parameter for messenger API injection
-- ✅ Curried functions for partial application
 - ✅ Separated concerns into logical sections:
   - Account Operations
   - Folder Operations
@@ -121,6 +119,7 @@
 - ✅ Pure helper functions extracted from complex operations
 - ✅ Improved error handling with constants
 - ✅ Maintained backward compatibility
+- ✅ Simple function signatures instead of currying
 
 **Functions:**
 - `getAccount(api, accountId)` - Get account with fallback
@@ -279,7 +278,7 @@ ext/
     └── theme.css            ← NEW (138 lines)
 ```
 
-**Total New Code:** 986 lines of reusable utilities
+**Total New Code:** 936 lines of reusable utilities (simplified from 986)
 
 ---
 
@@ -309,15 +308,31 @@ ext/
 
 ---
 
+## Lessons Learned
+
+### Correction: Functional.js Simplification
+Initial implementation over-engineered functional utilities with curry/partial application helpers. These were removed because:
+- JavaScript already supports this via arrow functions: `const add = a => b => a + b`
+- Curry helpers add complexity without real benefit
+- Better to write clear, explicit code than abstract wrappers
+
+**Revised approach:** Keep only genuinely useful utilities:
+- Error handling (tryCatch patterns)
+- Performance optimizations (memoize, debounce, throttle)
+- Simple composition helpers (pipe, tap)
+- Null safety utilities
+
 ## Conclusion
 
-Phase 0 successfully established the architectural foundation for the project. The codebase is now:
+Phase 0 successfully established a **pragmatic** architectural foundation. The codebase is now:
 - **More maintainable** - Centralized configuration
 - **More testable** - Pure functions, dependency injection
-- **More reusable** - Shared utility libraries
-- **More flexible** - Functional composition patterns
+- **More reusable** - Practical utility libraries
+- **More readable** - No over-abstraction
 - **More themeable** - CSS variable system
 
 The refactoring prioritized core modules (RuleEngine, MailClient, background.js, options.js) while leaving ui.js for a focused effort in the next phase.
+
+**Key Takeaway:** Functional programming in JavaScript doesn't require library-style abstractions - use language features directly.
 
 **Phase 0: Complete** ✅

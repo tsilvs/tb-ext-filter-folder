@@ -5,7 +5,6 @@
 
 import { LIMITS, INBOX_FOLDER_NAME, ERROR_MESSAGES } from '../config/constants.js'
 import { toSet, fromSet } from '../utils/data.js'
-import { curry } from '../utils/functional.js'
 
 // ============================================================================
 // Account Operations
@@ -14,10 +13,9 @@ import { curry } from '../utils/functional.js'
 /**
  * Get account by ID with fallback strategies
  * @param {Object} api - Messenger API object
- * @param {string} accountId - Account ID
- * @returns {Promise<Object|null>} Account object or null
+ * @returns {Function} Function accepting accountId
  */
-export const getAccount = curry(async (api, accountId) => {
+export const getAccount = (api) => async (accountId) => {
 	try {
 		// Strategy 1: Direct get
 		let account = await api.accounts.get(String(accountId))
@@ -33,7 +31,7 @@ export const getAccount = curry(async (api, accountId) => {
 		console.error(ERROR_MESSAGES.GET_ACCOUNT_FAILED, e)
 		return null
 	}
-})
+}
 
 /**
  * List all IMAP accounts
@@ -116,11 +114,10 @@ const getRootFolders = (account) => {
 /**
  * Scan account for all folders recursively
  * @param {Object} api - Messenger API object
- * @param {string} accountId - Account ID
- * @returns {Promise<Object>} Object with folders array, total count, and leaf count
+ * @returns {Function} Function accepting accountId
  */
-export const scanAccount = curry(async (api, accountId) => {
-	const account = await getAccount(api, accountId)
+export const scanAccount = (api) => async (accountId) => {
+	const account = await getAccount(api)(accountId)
 	
 	if (!account) {
 		return { folders: [], total: 0, leafs: 0 }
@@ -143,18 +140,16 @@ export const scanAccount = curry(async (api, accountId) => {
 		total: folders.length,
 		leafs: stats.leafs
 	}
-})
+}
 
 /**
  * Create a folder
  * @param {Object} api - Messenger API object
- * @param {string} parentId - Parent folder ID
- * @param {string} name - Folder name
- * @returns {Promise<Object>} Created folder object
+ * @returns {Function} Function accepting (parentId, name)
  */
-export const createFolder = curry(async (api, parentId, name) => {
+export const createFolder = (api) => (parentId, name) => {
 	return api.folders.create(String(parentId), name)
-})
+}
 
 /**
  * Find inbox folder from folder list
@@ -201,12 +196,9 @@ const shouldExcludeEmail = (selfEmails, email) => {
 /**
  * Get unique sender emails from folder
  * @param {Object} api - Messenger API object
- * @param {string} folderId - Folder ID to scan
- * @param {number} limit - Maximum messages to scan
- * @param {Array} selfIdentities - Array of identity objects to exclude
- * @returns {Promise<Array<string>>} Array of unique sender emails
+ * @returns {Function} Function accepting (folderId, limit, selfIdentities)
  */
-export const getSenders = curry(async (api, folderId, limit, selfIdentities = []) => {
+export const getSenders = (api) => async (folderId, limit, selfIdentities = []) => {
 	const messageLimit = limit || LIMITS.DEFAULT_SCAN_LIMIT
 	
 	const messages = await api.messages.list(String(folderId))
@@ -225,7 +217,7 @@ export const getSenders = curry(async (api, folderId, limit, selfIdentities = []
 	}
 	
 	return fromSet(senders)
-})
+}
 
 // ============================================================================
 // Folder Hierarchy Operations
@@ -269,12 +261,11 @@ export const getParentPath = (path) => {
 /**
  * Check if folder exists in map (case-insensitive)
  * @param {Map} folderMap - Folder map
- * @param {string} path - Path to check
- * @returns {boolean} True if exists
+ * @returns {Function} Function accepting path
  */
-export const folderExists = curry((folderMap, path) => {
+export const folderExists = (folderMap) => (path) => {
 	return folderMap.has(path.toLowerCase())
-})
+}
 
 // ============================================================================
 // Legacy Namespace Export (for backward compatibility during migration)
@@ -282,17 +273,16 @@ export const folderExists = curry((folderMap, path) => {
 
 export const MailClient = {
 	// Primary functions
-	scanAccount: (accountId) => scanAccount(messenger, accountId),
-	getSenders: (folderId, limit, selfIdentities) => 
-		getSenders(messenger, folderId, limit, selfIdentities),
-	createFolder: (parentId, name) => createFolder(messenger, parentId, name),
+	scanAccount: scanAccount(messenger),
+	getSenders: getSenders(messenger),
+	createFolder: createFolder(messenger),
 	
 	// Additional exports
-	getAccount: (accountId) => getAccount(messenger, accountId),
+	getAccount: getAccount(messenger),
 	listImapAccounts: () => listImapAccounts(messenger),
 	findInboxFolder,
 	buildFolderMap,
 	sortPathsByDepth,
 	getParentPath,
-	folderExists: (folderMap, path) => folderExists(folderMap, path)
+	folderExists
 }

@@ -13,7 +13,6 @@ import {
 } from '../config/constants.js'
 
 import { unique, sortBy } from '../utils/data.js'
-import { curry } from '../utils/functional.js'
 
 // ============================================================================
 // URI & Path Operations
@@ -75,15 +74,14 @@ export const emailToPath = (email) => {
 /**
  * Build full URI from base and path
  * @param {string} baseUri - Base URI (e.g., imap://user@host)
- * @param {string} path - Folder path
- * @returns {string} Full URI with encoded path segments
+ * @returns {Function} Function accepting path
  */
-export const buildFullUri = curry((baseUri, path) => {
+export const buildFullUri = (baseUri) => (path) => {
 	const encodedPath = path.split(PATH_SEPARATOR)
 		.map(encodeURIComponent)
 		.join(PATH_SEPARATOR)
 	return `${baseUri}${PATH_SEPARATOR}${encodedPath}`
-})
+}
 
 // ============================================================================
 // Email Extraction
@@ -184,13 +182,10 @@ export const calculateType = (options) => {
 /**
  * Generate a single filter rule block
  * @param {string} baseUri - Base IMAP URI
- * @param {string} email - Email address to filter
- * @param {string} path - Target folder path
- * @param {number} typeValue - Filter type bitmask (default: 17)
- * @returns {string} Filter rule block
+ * @returns {Function} Function accepting (email, path, typeValue)
  */
-export const generateBlock = curry((baseUri, email, path, typeValue = DEFAULT_FILTER_TYPE) => {
-	const fullUri = buildFullUri(baseUri, path)
+export const generateBlock = (baseUri) => (email, path, typeValue = DEFAULT_FILTER_TYPE) => {
+	const fullUri = buildFullUri(baseUri)(path)
 	
 	return `name="From ${email}"
 enabled="yes"
@@ -198,7 +193,7 @@ type="${typeValue}"
 action="Move to folder"
 actionValue="${fullUri}"
 condition="AND (from,contains,${email})"`
-})
+}
 
 // ============================================================================
 // Rule Sorting
@@ -245,12 +240,11 @@ export const sortRawRules = (content) => {
 /**
  * Update all filter type values in content
  * @param {string} content - Raw rules content
- * @param {number} newTypeValue - New type value to apply
- * @returns {string} Updated content
+ * @returns {Function} Function accepting newTypeValue
  */
-export const updateFilterTypes = curry((content, newTypeValue) => {
+export const updateFilterTypes = (content) => (newTypeValue) => {
 	return content.replace(REGEX_PATTERNS.TYPE_ATTRIBUTE, `type="${newTypeValue}"`)
-})
+}
 
 // ============================================================================
 // Path Inference

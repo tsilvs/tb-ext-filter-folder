@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 		if(!val) return
 		
 		const typeMask = getFilterTypeMask()
-		const updated = RuleEngine.updateFilterTypes(val, typeMask)
+		const updated = RuleEngine.updateFilterTypes(val)(typeMask)
 		
 		if (updated !== val) {
 			pasteInput.value = updated
@@ -461,7 +461,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 		
 		// Use configured filter mask
 		const typeMask = getFilterTypeMask()
-		$('genRulesOut').value = selected.map(i => RuleEngine.generateBlock(base, i.email, i.path, typeMask)).join('\n')
+		const genBlock = RuleEngine.generateBlock(base)
+		$('genRulesOut').value = selected.map(i => genBlock(i.email, i.path, typeMask)).join('\n')
 		$('genRulesArea').scrollIntoView({ behavior: 'smooth' })
 	}
 	
