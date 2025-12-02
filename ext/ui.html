@@ -5,6 +5,8 @@
 		<meta charset="utf-8">
 		<title data-i18n="extensionName">Loading...</title>
 		<link rel="stylesheet"
+					href="styles/theme.css">
+		<link rel="stylesheet"
 					href="style.css">
 	</head>
 
@@ -12,9 +14,22 @@
 		<main class="container">
 			<header class="main-header">
 				<h1 data-i18n="extensionName"></h1>
-				<button id="btnSettings" class="icon-button" aria-label="Settings" title="Settings">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<circle cx="12" cy="12" r="3"></circle>
+
+				<button id="btnSettings"
+								class="icon-button"
+								aria-label="Settings"
+								title="Settings">
+
+					<svg width="20"
+							 height="20"
+							 viewBox="0 0 24 24"
+							 fill="none"
+							 stroke="currentColor"
+							 stroke-width="2">
+						<circle cx="12"
+										cy="12"
+										r="3"></circle>
+
 						<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
 					</svg>
 				</button>
@@ -39,11 +54,22 @@
 									data-i18n-placeholder="pastePlaceholder"></textarea>
 
 				<div class="meta-info">
+
 					<div class="btn-group">
-						<button id="btnSortInput" type="button" class="link-button" data-i18n="sortRulesBtn"></button>
+
+						<button id="btnSortInput"
+										type="button"
+										class="link-button"
+										data-i18n="sortRulesBtn"></button>
+
 						<span class="sep">•</span>
-						<button id="btnApplyDefaults" type="button" class="link-button" data-i18n="applyDefaultsBtn"></button>
+
+						<button id="btnApplyDefaults"
+										type="button"
+										class="link-button"
+										data-i18n="applyDefaultsBtn"></button>
 					</div>
+
 					<span id="ruleCountDisplay"></span>
 				</div>
 			</section>
@@ -66,6 +92,7 @@
 				</nav>
 
 				<!-- Tab 1: Missing Folders -->
+
 				<div class="tab-content"
 						 id="contentFolders">
 					<section class="card">
@@ -75,18 +102,21 @@
 
 							<div class="stats">
 								<aside class="stat">
+
 									<div class="stat-label"
 											 data-i18n="totalFolders"></div>
 									<output class="stat-value"
 													id="statTotal">—</output>
 								</aside>
 								<aside class="stat">
+
 									<div class="stat-label"
 											 data-i18n="leafFolders"></div>
 									<output class="stat-value"
 													id="statLeafs">—</output>
 								</aside>
 								<aside class="stat">
+
 									<div class="stat-label"
 											 data-i18n="filterRules"></div>
 									<output class="stat-value"
@@ -104,6 +134,7 @@
 							</div>
 
 							<div class="actions">
+
 								<button type="submit"
 												id="btnAnalyze"
 												disabled
@@ -120,12 +151,14 @@
 
 						<div class="stats">
 							<aside class="stat">
+
 								<div class="stat-label"
 										 data-i18n="uniqueLeafs"></div>
 								<output class="stat-value"
 												id="resLeafs">—</output>
 							</aside>
 							<aside class="stat">
+
 								<div class="stat-label"
 										 data-i18n="missing"></div>
 								<output class="stat-value"
@@ -135,11 +168,13 @@
 
 						<div id="missingList"
 								 class="folder-list empty-state">
+
 							<span class="hint"
 										data-i18n="analyzeToSeeFolders"></span>
 						</div>
 
 						<div class="actions">
+
 							<button id="btnCreateMissing"
 											disabled
 											data-i18n="createMissingFoldersBtn"></button>
@@ -148,6 +183,7 @@
 				</div>
 
 				<!-- Tab 2: Discovery -->
+
 				<div class="tab-content"
 						 id="contentDiscovery">
 					<section class="card">
@@ -160,9 +196,11 @@
 							</select>
 
 							<label data-i18n="targetRootLabel"></label>
+
 							<div class="input-group">
 								<input type="text"
 											 id="targetRoot">
+
 								<button type="button"
 												id="btnInfer"
 												data-i18n="inferRootBtn"></button>
@@ -171,6 +209,7 @@
 										 data-i18n="targetRootHint"></small>
 
 							<div class="actions">
+
 								<button type="submit"
 												id="btnScan"
 												class="primary"
@@ -183,26 +222,35 @@
 
 					<section id="discoveryResults"
 									 class="card discovery-list hidden">
+
 						<div class="list-header">
 							<input type="checkbox"
 										 id="selectAllDiscovery"
 										 checked>
+
 							<span class="sortable"
 										data-sort="email">
+
 								<span data-i18n="discoveredEmail"></span>
+
 								<span class="sort-icon"></span></span>
+
 							<span class="sortable"
 										data-sort="path">
+
 								<span data-i18n="proposedPath"></span>
+
 								<span class="sort-icon"></span></span>
 						</div>
 
 						<div id="discoveryList"></div>
 
 						<div class="actions">
+
 							<button id="btnCreateDiscovered"
 											disabled
 											data-i18n="btnCreateFoldersOnly"></button>
+
 							<button id="btnGenRules"
 											class="secondary"
 											disabled
@@ -213,32 +261,44 @@
 					<section id="genRulesArea"
 									 class="card hidden">
 						<h3 data-i18n="generatedRulesHeader"></h3>
-						
-						<div id="accountMismatchWarning" class="status warning" style="display: none; margin-bottom: 12px;">
+
+						<div id="accountMismatchWarning"
+								 class="status warning"
+								 style="display: none; margin-bottom: 12px;">
 							<strong>⚠ Account Mismatch Detected</strong><br>
 							Selected Account: <code id="mismatchAccountUri"></code><br>
 							Rules Account: <code id="mismatchRulesUri"></code>
 						</div>
-						
+
 						<fieldset id="ruleGenerationOptions">
+
 							<div class="checkbox-group">
-								<input type="checkbox" id="chkOverrideAccount" disabled
-									title="Enable when account mismatch is detected">
-								<label for="chkOverrideAccount" class="inline">
+								<input type="checkbox"
+											 id="chkOverrideAccount"
+											 disabled
+											 title="Enable when account mismatch is detected">
+								<label for="chkOverrideAccount"
+											 class="inline">
 									Override with selected account URI
 								</label>
 							</div>
 						</fieldset>
-						
+
 						<textarea id="genRulesOut"
 											readonly></textarea>
-						
-						<div class="checkbox-group" style="margin: 0 0 12px 0;">
-							<input type="checkbox" id="chkSortDownload" checked>
-							<label for="chkSortDownload" class="inline" data-i18n="sortCombinedLabel"></label>
+
+						<div class="checkbox-group"
+								 style="margin: 0 0 12px 0;">
+							<input type="checkbox"
+										 id="chkSortDownload"
+										 checked>
+							<label for="chkSortDownload"
+										 class="inline"
+										 data-i18n="sortCombinedLabel"></label>
 						</div>
 
 						<div class="actions">
+
 							<button id="btnDownload"
 											data-i18n="downloadCombined"></button>
 						</div>
@@ -248,13 +308,19 @@
 		</main>
 
 		<!-- Settings Modal -->
-		<div id="settingsModal" class="modal-overlay">
+
+		<div id="settingsModal"
+				 class="modal-overlay">
+
 			<div class="modal-content">
 				<header class="modal-header">
 					<h2 data-i18n="settingsTitle">Settings</h2>
-					<button id="btnCloseSettings" class="icon-button close">&times;</button>
+
+					<button id="btnCloseSettings"
+									class="icon-button close">&times;</button>
 				</header>
-				<iframe src="options.html" class="settings-frame"></iframe>
+				<iframe src="options.html"
+								class="settings-frame"></iframe>
 			</div>
 		</div>
 

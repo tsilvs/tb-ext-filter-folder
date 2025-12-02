@@ -82,31 +82,32 @@ input[name="tabs"] { display: none; }
 
 .tab-label {
 	background: none;
-	border-bottom: 3px solid transparent;
+	border-bottom: 2px solid var(--color-divider);
 	padding: 8px 16px;
 	cursor: pointer;
-	font-weight: 600;
-	color: #5f6368;
-	border-radius: 4px 4px 0 0;
-	font-size: 14px;
-	transition: all 0.2s;
+	font-weight: var(--font-weight-medium);
+	color: var(--color-text-secondary);
+	border-radius: var(--radius-md) var(--radius-md) 0 0;
+	font-size: var(--font-size-md);
+	transition: all var(--transition-base);
 }
 
 .tab-label:hover {
-	color: #202124;
-	background: rgba(0,0,0,0.04);
+	color: var(--color-text-primary);
+	background: var(--color-hover-bg);
 }
 
 #tabInputFolders:checked ~ .tabs-nav label[for="tabInputFolders"],
 #tabInputDiscovery:checked ~ .tabs-nav label[for="tabInputDiscovery"] {
-	color: #1a73e8;
-	border-bottom-color: #1a73e8;
+	color: var(--color-link);
+	border-bottom: 3px solid var(--color-link);
+	font-weight: var(--font-weight-semibold);
 }
 
 .tab-content { display: none; }
 
-#tabInputFolders:checked ~ #contentFolders,
-#tabInputDiscovery:checked ~ #contentDiscovery {
+#tabInputFolders:checked ~ .tabs-nav ~ #contentFolders,
+#tabInputDiscovery:checked ~ .tabs-nav ~ #contentDiscovery {
 	display: block;
 	animation: fadeIn 0.2s ease-in-out;
 }
