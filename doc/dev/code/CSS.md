@@ -6,11 +6,8 @@ This directory contains the refactored CSS architecture for the Thunderbird Filt
 ## File Structure
 
 ```
-ext/styles/
-├── theme.css              # Design tokens and CSS variables
-├── base.css               # Base styles, resets, typography
-├── layout.css             # Layout components and grid structure
-├── components/            # Self-contained UI components
+ext/css/
+├── cmp/            # Self-contained UI components
 │   ├── _cards.css         # Card containers and shared config
 │   ├── _tabs.css          # CSS-only tabs implementation
 │   ├── _buttons.css       # All button variants and states
@@ -18,10 +15,12 @@ ext/styles/
 │   ├── _modals.css        # Modal overlay and content
 │   ├── _lists.css         # Discovery lists, folder lists
 │   └── _status.css        # Status messages and notifications
-├── utilities/             # Utility classes
+├── util/             # Utility classes
 │   ├── _spacing.css       # Margin and padding utilities
 │   └── _misc.css          # Stats, meta-info, other utilities
-└── css-refactoring-plan.md # Detailed implementation plan
+├── theme.css              # Design tokens and CSS variables
+├── base.css               # Base styles, resets, typography
+└── layout.css             # Layout components and grid structure
 ```
 
 ## Loading Order
@@ -50,7 +49,7 @@ The CSS files should be loaded in this specific order to ensure proper cascade a
 ## Design System
 
 ### Theme Variables
-All design tokens are centralized in [`theme.css`](theme.css):
+All design tokens are centralized in [`theme.css`](../../../ext/css/theme.css):
 - Colors (primary, neutral, semantic)
 - Spacing (8px base system)
 - Typography (fonts, sizes, weights)
@@ -80,27 +79,27 @@ All design tokens are centralized in [`theme.css`](theme.css):
 
 ### Standard Loading
 ```html
-<link rel="stylesheet" href="styles/theme.css">
-<link rel="stylesheet" href="styles/base.css">
-<link rel="stylesheet" href="styles/layout.css">
-<link rel="stylesheet" href="styles/components/_cards.css">
-<link rel="stylesheet" href="styles/components/_tabs.css">
-<link rel="stylesheet" href="styles/components/_buttons.css">
-<link rel="stylesheet" href="styles/components/_forms.css">
-<link rel="stylesheet" href="styles/components/_status.css">
-<link rel="stylesheet" href="styles/components/_lists.css">
-<link rel="stylesheet" href="styles/components/_modals.css">
-<link rel="stylesheet" href="styles/utilities/_misc.css">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/cmp/_cards.css">
+<link rel="stylesheet" href="css/cmp/_tabs.css">
+<link rel="stylesheet" href="css/cmp/_buttons.css">
+<link rel="stylesheet" href="css/cmp/_forms.css">
+<link rel="stylesheet" href="css/cmp/_status.css">
+<link rel="stylesheet" href="css/cmp/_lists.css">
+<link rel="stylesheet" href="css/cmp/_modals.css">
+<link rel="stylesheet" href="css/util/_misc.css">
 ```
 
 ### Alternative: Single Entry Point
 You could also create a `main.css` file that imports all others:
 ```css
-/* styles/main.css */
+/* css/main.css */
 @import 'theme.css';
 @import 'base.css';
 @import 'layout.css';
-@import 'components/_cards.css';
+@import 'cmp/_cards.css';
 /* ... etc */
 ```
 
@@ -109,7 +108,7 @@ Then just link to `main.css` in HTML.
 ## Maintenance Guidelines
 
 ### Adding New Components
-1. Create a new file in `components/` with underscore prefix
+1. Create a new file in `cmp/` with underscore prefix
 2. Follow the existing naming convention
 3. Use theme variables for all values
 4. Add the new link to HTML files

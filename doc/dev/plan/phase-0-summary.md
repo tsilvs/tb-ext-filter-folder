@@ -68,7 +68,7 @@
 ---
 
 ### 3. CSS Theme Extraction
-**File:** [`ext/styles/theme.css`](../../../ext/styles/theme.css) (138 lines)
+**File:** [`ext/css/theme.css`](../../../ext/css/theme.css) (138 lines)
 
 **Achievements:**
 - ✅ Extracted all color values to CSS variables
@@ -274,7 +274,7 @@ ext/
 │   ├── dom.js               ← NEW (226 lines)
 │   ├── functional.js        ← NEW (244 lines)
 │   └── data.js              ← NEW (253 lines)
-└── styles/
+└── css/
     └── theme.css            ← NEW (138 lines)
 ```
 
