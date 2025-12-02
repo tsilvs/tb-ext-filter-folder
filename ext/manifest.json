@@ -1,12 +1,12 @@
 {
 	"manifest_version": 3,
-	"name": "Filter Folder Creator",
+	"name": "__MSG_extensionName__",
 	"version": "2.1",
-	"description": "Creates missing IMAP folders from filter rules",
-	"author": "Your Name",
+	"description": "__MSG_extensionDescription__",
+	"author": "Seva Tsiliurik",
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "filter-folder-creator@example.com",
+			"id": "filter-folder-creator@tsilvs",
 			"strict_min_version": "115.0"
 		}
 	},
@@ -25,7 +25,10 @@
 	},
 	"default_locale": "en",
 	"action": {
-		"default_title": "Filter Folder Creator"
+		"default_title": "__MSG_extensionName__",
+		"default_icon": {
+			"19": "icon.svg"
+		}
 	},
 	"background": {
 		"scripts": [
