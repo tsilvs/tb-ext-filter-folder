@@ -1,0 +1,52 @@
+/**
+ * Modal Components
+ * Modal overlay and content styling
+ */
+
+.modal-overlay {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	z-index: var(--z-modal);
+	justify-content: center;
+	align-items: center;
+}
+
+.modal-overlay.active {
+	display: flex;
+}
+
+.modal-content {
+	background: var(--color-surface);
+	width: 90%;
+	max-width: var(--modal-max-width);
+	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-lg);
+	display: flex;
+	flex-direction: column;
+	max-height: var(--modal-max-height);
+}
+
+.modal-header {
+	padding: var(--spacing-md) var(--spacing-lg);
+	border-bottom: 1px solid var(--color-border-light);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.modal-header h2 {
+	margin: 0;
+	font-size: var(--font-size-xl);
+}
+
+.settings-frame {
+	border: none;
+	width: 100%;
+	height: var(--settings-frame-height);
+	border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}

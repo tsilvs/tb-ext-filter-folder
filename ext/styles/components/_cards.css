@@ -1,0 +1,45 @@
+/**
+ * Card Components
+ * Styles for card containers, articles, and shared config sections
+ */
+
+.card,
+article,
+.shared-config {
+	background: var(--color-surface);
+	padding: var(--spacing-lg);
+	border-radius: var(--radius-xl);
+	margin-bottom: var(--spacing-lg);
+	border: none;
+	box-shadow: var(--shadow-md);
+}
+
+.shared-config textarea.collapsed {
+	height: var(--input-height);
+	min-height: var(--input-height);
+}
+
+.shared-config textarea:focus {
+	height: 120px;
+}
+
+.meta-info {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-secondary);
+	text-align: right;
+	margin-top: 4px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.btn-group {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+}
+
+.sep {
+	color: #ccc;
+	font-size: 10px;
+}

@@ -1,0 +1,64 @@
+/**
+ * Tab Components
+ * CSS-only tabs implementation
+ */
+
+.tabs-container {
+	display: flex;
+	flex-direction: column;
+}
+
+input[name="tabs"] {
+	display: none;
+}
+
+.tabs-nav {
+	display: flex;
+	gap: var(--spacing-sm);
+	margin-bottom: var(--spacing-md);
+}
+
+.tab-label {
+	background: none;
+	border-bottom: 2px solid var(--color-divider);
+	padding: 8px 16px;
+	cursor: pointer;
+	font-weight: var(--font-weight-medium);
+	color: var(--color-text-secondary);
+	border-radius: var(--radius-md) var(--radius-md) 0 0;
+	font-size: var(--font-size-md);
+	transition: all var(--transition-base);
+}
+
+.tab-label:hover {
+	color: var(--color-text-primary);
+	background: var(--color-hover-bg);
+}
+
+#tabInputFolders:checked~.tabs-nav label[for="tabInputFolders"],
+#tabInputDiscovery:checked~.tabs-nav label[for="tabInputDiscovery"] {
+	color: var(--color-link);
+	border-bottom: 3px solid var(--color-link);
+	font-weight: var(--font-weight-semibold);
+}
+
+.tab-content {
+	display: none;
+}
+
+#tabInputFolders:checked~.tabs-nav~#contentFolders,
+#tabInputDiscovery:checked~.tabs-nav~#contentDiscovery {
+	display: block;
+	animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

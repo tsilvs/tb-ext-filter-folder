@@ -1,0 +1,36 @@
+/**
+ * Miscellaneous Utilities
+ * Stats, meta-info, and other utility classes
+ */
+
+.stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(var(--stat-min-width), 1fr));
+	gap: var(--spacing-md);
+	margin: 0 0 20px 0;
+}
+
+.stat {
+	background: var(--color-hover-bg);
+	padding: var(--spacing-md);
+	border-radius: var(--radius-lg);
+	border: 1px solid var(--color-divider);
+	text-align: center;
+}
+
+.stat-label {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	font-weight: var(--font-weight-semibold);
+}
+
+.stat-value {
+	display: block;
+	font-size: var(--font-size-3xl);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-text-primary);
+	margin-top: 8px;
+	font-variant-numeric: tabular-nums;
+}

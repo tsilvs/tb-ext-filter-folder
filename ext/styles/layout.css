@@ -1,0 +1,17 @@
+/**
+ * Layout Components
+ * Container, header, and main layout structures
+ */
+
+.container {
+	width: 100%;
+	max-width: var(--container-max-width);
+	padding: var(--spacing-lg);
+}
+
+header.main-header {
+	margin-bottom: var(--spacing-lg);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}

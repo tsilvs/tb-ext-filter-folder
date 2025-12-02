@@ -1,0 +1,91 @@
+/**
+ * Button Components
+ * All button variants and states
+ */
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-md);
+	margin-top: 20px;
+}
+
+.actions button {
+	margin: 0;
+}
+
+.status-area {
+	flex-grow: 1;
+	min-height: 20px;
+}
+
+button {
+	padding: 10px 20px;
+	cursor: pointer;
+	background: var(--color-primary);
+	color: white;
+	border: none;
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-md);
+	font-weight: var(--font-weight-medium);
+	transition: background var(--transition-base);
+}
+
+button:disabled {
+	background: var(--color-disabled-bg);
+	color: var(--color-disabled-text);
+	cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+	background: var(--color-primary-hover);
+	box-shadow: var(--shadow-sm);
+}
+
+button.secondary {
+	background: var(--color-surface);
+	color: var(--color-primary-light);
+	border: 1px solid var(--color-border);
+}
+
+button.secondary:hover:not(:disabled) {
+	background: var(--color-hover-bg);
+	box-shadow: none;
+}
+
+button.link-button {
+	background: none;
+	color: var(--color-primary-light);
+	border: none;
+	padding: 0;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+}
+
+button.link-button:hover {
+	text-decoration: underline;
+	box-shadow: none;
+	background: none;
+}
+
+/* Icon Buttons */
+.icon-button {
+	background: transparent;
+	color: var(--color-text-secondary);
+	padding: 8px;
+	border-radius: var(--radius-round);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.icon-button:hover {
+	background: var(--color-hover-bg-light);
+	color: var(--color-text-primary);
+	box-shadow: none;
+}
+
+.icon-button.close {
+	font-size: 24px;
+	padding: 0 8px;
+}

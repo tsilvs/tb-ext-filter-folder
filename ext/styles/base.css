@@ -1,0 +1,33 @@
+/**
+ * Base Styles
+ * CSS reset, base typography, and fundamental element styles
+ */
+
+* {
+	box-sizing: border-box;
+}
+
+:root,
+html,
+body {
+	all: revert !important;
+	color-scheme: only light !important;
+}
+
+body {
+	width: 100%;
+	min-height: 100vh;
+	font-family: var(--font-family-base);
+	margin: 0;
+	padding: 0;
+	background-color: var(--color-background);
+	color: var(--color-text-primary);
+	display: flex;
+	justify-content: center;
+}
+
+h1 {
+	margin: 0;
+	font-size: var(--font-size-2xl);
+	color: var(--color-text-primary);
+}

@@ -1,0 +1,61 @@
+/**
+ * Status Components
+ * Status messages, instructions, and notifications
+ */
+
+.instruction {
+	background: var(--color-info-bg);
+	color: var(--color-info);
+	padding: var(--spacing-md);
+	border-radius: var(--radius-lg);
+	margin-bottom: var(--spacing-md);
+	font-size: var(--font-size-md);
+	line-height: var(--line-height-base);
+}
+
+.status-container {
+	margin-bottom: var(--spacing-md);
+}
+
+.status {
+	padding: 8px 12px;
+	border-radius: var(--radius-md);
+	margin: 0;
+	font-size: var(--font-size-base);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border: 1px solid transparent;
+}
+
+.status.warning {
+	background: var(--color-warning-bg);
+	color: var(--color-warning);
+	border-color: var(--color-warning-border);
+	display: block;
+}
+
+.success {
+	background: var(--color-success-bg);
+	color: var(--color-success);
+	border-color: var(--color-success-border);
+}
+
+.error {
+	background: var(--color-error-bg);
+	color: var(--color-error);
+	border-color: var(--color-error-border);
+}
+
+.info {
+	background: var(--color-info-bg);
+	color: var(--color-info);
+	border-color: var(--color-info-border);
+}
+
+.progress {
+	background: var(--color-info-bg);
+	color: var(--color-info);
+	font-weight: var(--font-weight-semibold);
+	border-color: var(--color-info-border);
+}
