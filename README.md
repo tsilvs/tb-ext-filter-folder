@@ -15,7 +15,7 @@ Automate IMAP folder management via message filter rules.
 2. **Discovery**: Scan inbox -> extract sender domains -> propose folder hierarchy -> generate filter rules
 3. **Organization**: Auto-structure senders as `Domain/User` hierarchies
 
-More in [BRD](./doc/dev/reqs/BRD.md)
+More in [BRD](./doc/dev/req/BRD.md)
 
 ## Installation
 
@@ -23,7 +23,7 @@ More in [BRD](./doc/dev/reqs/BRD.md)
 
 #### Option A: Load Temporary Add-on (Testing)
 1. Open Thunderbird
-2. Go to `Tools → Developer Tools → Debug Add-ons` (or `about:debugging`)
+2. Go to `Tools `->` Developer Tools `->` Debug Add-ons` (or `about:debugging`)
 3. Click "This Thunderbird"
 4. Click "Load Temporary Add-on"
 5. Select `manifest.json` from your folder
@@ -32,18 +32,18 @@ More in [BRD](./doc/dev/reqs/BRD.md)
 #### Option B: Create XPI Package (Distribution)
 ```bash
 cd filter-folder-creator
-zip -r ../filter-folder-creator.xpi *
+(cd ./ext/ && zip -r ../dist/$(basename "$(cd .. && pwd)").xpi ./*)
 ```
 
 Install XPI:
-1. Thunderbird → Tools → Add-ons and Themes
-2. Click gear icon → "Install Add-on From File"
+1. Thunderbird `->` Tools `->` Add-ons and Themes
+2. Click gear icon `->` "Install Add-on From File"
 3. Select `filter-folder-creator.xpi`
 
 ### Test Extension
 
 #### Find msgFilterRules.dat:
-1. Tools → Account Settings
+1. Tools `->` Account Settings
 2. Select your IMAP account
 3. Click "Server Settings"
 4. Note the "Local directory" path
@@ -64,7 +64,7 @@ Install XPI:
 - **No accounts showing**: Extension only works with IMAP accounts
 - **Parse errors**: Ensure msgFilterRules.dat is from the selected account
 - **Creation fails**: Check folder permissions and IMAP server connectivity
-- **View logs**: Tools → Developer Tools → Error Console
+- **View logs**: Tools `->` Developer Tools `->` Error Console
 
 ## Example msgFilterRules.dat Entry
 
