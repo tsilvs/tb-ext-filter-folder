@@ -1,75 +1,117 @@
+/**
+ * Options Page
+ * Handles user preferences and settings
+ */
+import { DEFAULT_CONFIG, UI_TIMEOUTS, STORAGE_AREAS } from './config/constants.js'
+import { getElementById, setChecked, setValue } from './utils/dom.js'
+
 // Use 'browser' namespace which is standard for WebExtensions
 const browserApi = (typeof browser !== 'undefined') ? browser : messenger;
 
-// Default Preferences
-const defaults = {
-	mergeCase: true,
-	scanLimit: 500,
-	defaultRoot: '',
-	// Filter Triggers (Default: Manual + New Mail = 17)
-	filterManual: true,
-	filterNewMail: true,
-	filterSending: false,
-	filterArchive: false,
-	filterPeriodic: false
-};
+// ============================================================================
+// DOM References
+// ============================================================================
 
-// DOM Elements
-const form = document.getElementById('optionsForm');
-const status = document.getElementById('toast');
+const getForm = () => getElementById('optionsForm')
+const getToast = () => getElementById('toast')
 
-// Restore Options
+// ============================================================================
+// Configuration Operations
+// ============================================================================
+
+/**
+ * Apply saved configuration to UI
+ * @param {Object} config - Saved configuration
+ */
+const applyConfigToUI = (config) => {
+	setChecked('mergeCase', config.mergeCase)
+	setValue('scanLimit', config.scanLimit)
+	setValue('defaultRoot', config.defaultRoot)
+	
+	// Filter Triggers
+	setChecked('optManual', config.filterManual)
+	setChecked('optNewMail', config.filterNewMail)
+	setChecked('optSending', config.filterSending)
+	setChecked('optArchive', config.filterArchive)
+	setChecked('optPeriodic', config.filterPeriodic)
+}
+
+/**
+ * Restore saved options from storage
+ */
 async function restoreOptions() {
 	try {
-		const result = await browserApi.storage.sync.get(defaults);
-		
-		document.getElementById('mergeCase').checked = result.mergeCase;
-		document.getElementById('scanLimit').value = result.scanLimit;
-		document.getElementById('defaultRoot').value = result.defaultRoot;
-		
-		// Filter Triggers
-		document.getElementById('optManual').checked = result.filterManual;
-		document.getElementById('optNewMail').checked = result.filterNewMail;
-		document.getElementById('optSending').checked = result.filterSending;
-		document.getElementById('optArchive').checked = result.filterArchive;
-		document.getElementById('optPeriodic').checked = result.filterPeriodic;
-
+		const result = await browserApi.storage.sync.get(DEFAULT_CONFIG)
+		applyConfigToUI(result)
 	} catch (e) {
-		console.error("Failed to restore options:", e);
+		console.error('Failed to restore options:', e)
 	}
 }
 
-// Save Options
-async function saveOptions(e) {
-	e.preventDefault();
+/**
+ * Collect preferences from UI
+ * @returns {Object} Preferences object
+ */
+const collectPreferences = () => ({
+	mergeCase: getElementById('mergeCase').checked,
+	scanLimit: parseInt(getElementById('scanLimit').value, 10),
+	defaultRoot: getElementById('defaultRoot').value.trim(),
 	
-	const prefs = {
-		mergeCase: document.getElementById('mergeCase').checked,
-		scanLimit: parseInt(document.getElementById('scanLimit').value, 10),
-		defaultRoot: document.getElementById('defaultRoot').value.trim(),
-		
-		filterManual: document.getElementById('optManual').checked,
-		filterNewMail: document.getElementById('optNewMail').checked,
-		filterSending: document.getElementById('optSending').checked,
-		filterArchive: document.getElementById('optArchive').checked,
-		filterPeriodic: document.getElementById('optPeriodic').checked
-	};
+	filterManual: getElementById('optManual').checked,
+	filterNewMail: getElementById('optNewMail').checked,
+	filterSending: getElementById('optSending').checked,
+	filterArchive: getElementById('optArchive').checked,
+	filterPeriodic: getElementById('optPeriodic').checked
+})
+
+/**
+ * Show toast notification
+ * @param {HTMLElement} toast - Toast element
+ * @param {string} message - Message to display
+ * @param {number} duration - Display duration in ms
+ */
+const showToast = (toast, message, duration = UI_TIMEOUTS.TOAST_DURATION) => {
+	toast.textContent = message
+	toast.classList.add('show')
+	
+	setTimeout(() => {
+		toast.classList.remove('show')
+	}, duration)
+}
+
+/**
+ * Save options to storage
+ * @param {Event} e - Form submit event
+ */
+async function saveOptions(e) {
+	e.preventDefault()
+	
+	const prefs = collectPreferences()
+	const toast = getToast()
 
 	try {
-		await browserApi.storage.sync.set(prefs);
-		
-		// Show Feedback
-		status.textContent = "Settings Saved";
-		status.classList.add('show');
-		setTimeout(() => {
-			status.classList.remove('show');
-		}, 2000);
+		await browserApi.storage.sync.set(prefs)
+		showToast(toast, 'Settings Saved')
 	} catch (e) {
-		console.error(e);
-		status.textContent = "Error saving settings";
-		status.classList.add('show');
+		console.error(e)
+		showToast(toast, 'Error saving settings')
 	}
 }
 
-document.addEventListener('DOMContentLoaded', restoreOptions);
-form.addEventListener('submit', saveOptions);
+// ============================================================================
+// Event Listeners
+// ============================================================================
+
+/**
+ * Initialize options page
+ */
+const initializeOptions = () => {
+	restoreOptions()
+	
+	const form = getForm()
+	if (form) {
+		form.addEventListener('submit', saveOptions)
+	}
+}
+
+document.addEventListener('DOMContentLoaded', initializeOptions)

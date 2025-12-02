@@ -1,0 +1,146 @@
+/**
+ * Theme Variables
+ * Centralized design tokens for colors, spacing, typography, and other visual properties
+ */
+
+:root {
+	/* Color Palette - Primary */
+	--color-primary: #0078d4;
+	--color-primary-hover: #0060aa;
+	--color-primary-light: #1a73e8;
+	
+	/* Color Palette - Neutral */
+	--color-background: #f0f2f5;
+	--color-surface: #ffffff;
+	--color-text-primary: #202124;
+	--color-text-secondary: #5f6368;
+	--color-text-tertiary: #9aa0a6;
+	--color-border: #dadce0;
+	--color-border-light: #eee;
+	--color-divider: #f1f3f4;
+	
+	/* Color Palette - Semantic */
+	--color-success: #137333;
+	--color-success-bg: #e6f4ea;
+	--color-success-border: #ceead6;
+	--color-success-dark: #1e8e3e;
+	
+	--color-error: #c5221f;
+	--color-error-bg: #fce8e6;
+	--color-error-border: #fad2cf;
+	--color-error-dark: #d93025;
+	
+	--color-warning: #856404;
+	--color-warning-bg: #fff3cd;
+	--color-warning-border: #ffeeba;
+	
+	--color-info: #1967d2;
+	--color-info-bg: #e8f0fe;
+	--color-info-border: #d2e3fc;
+	
+	/* Color Palette - Interactive */
+	--color-link: #1a73e8;
+	--color-link-hover: #1967d2;
+	--color-hover-bg: rgba(0, 0, 0, 0.04);
+	--color-hover-bg-light: rgba(0, 0, 0, 0.05);
+	--color-active-bg: #e6f4ea;
+	--color-disabled-bg: #e0e0e0;
+	--color-disabled-text: #909090;
+	
+	/* Spacing System (8px base) */
+	--spacing-xs: 4px;
+	--spacing-sm: 8px;
+	--spacing-md: 16px;
+	--spacing-lg: 24px;
+	--spacing-xl: 32px;
+	--spacing-2xl: 48px;
+	
+	/* Border Radius */
+	--radius-sm: 3px;
+	--radius-md: 4px;
+	--radius-lg: 6px;
+	--radius-xl: 8px;
+	--radius-round: 50%;
+	
+	/* Typography */
+	--font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+	
+	--font-size-xs: 11px;
+	--font-size-sm: 12px;
+	--font-size-base: 13px;
+	--font-size-md: 14px;
+	--font-size-lg: 16px;
+	--font-size-xl: 18px;
+	--font-size-2xl: 22px;
+	--font-size-3xl: 28px;
+	
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	
+	--line-height-tight: 1.4;
+	--line-height-base: 1.5;
+	
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+	--shadow-md: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+	--shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+	
+	/* Z-Index Layers */
+	--z-base: 1;
+	--z-dropdown: 100;
+	--z-sticky: 500;
+	--z-modal: 1000;
+	--z-popover: 1500;
+	--z-tooltip: 2000;
+	
+	/* Transitions */
+	--transition-fast: 0.1s;
+	--transition-base: 0.2s;
+	--transition-slow: 0.3s;
+	
+	/* Component Specific */
+	--container-max-width: 850px;
+	--input-height: 40px;
+	--button-height: 40px;
+	--stat-min-width: 100px;
+	--list-max-height: 400px;
+	--folder-list-max-height: 300px;
+	--modal-max-width: 500px;
+	--modal-max-height: 90vh;
+	--settings-frame-height: 450px;
+	
+	/* Grid Columns */
+	--grid-cols-discovery: 40px 1fr 2fr;
+	
+	/* Code Editor */
+	--code-bg: #2b2b2b;
+	--code-text: #f1f3f4;
+	--code-height: 150px;
+}
+
+/* Dark Mode Override (optional for future) */
+@media (prefers-color-scheme: dark) {
+	:root {
+		/* Dark mode tokens can be defined here */
+	}
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+	:root {
+		--shadow-sm: none;
+		--shadow-md: none;
+		--shadow-lg: none;
+	}
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--transition-fast: 0s;
+		--transition-base: 0s;
+		--transition-slow: 0s;
+	}
+}

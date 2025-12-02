@@ -1,179 +1,369 @@
 /**
  * Modules/RuleEngine.js
  * Centralized parsing logic for Thunderbird filter rules.
+ * Refactored to use pure functions with dependency injection.
  */
 
-export const RuleEngine = {
-	// Thunderbird Filter Type Bitmasks
-	TYPES: {
-		NEW_MAIL: 1,         // Getting New Mail (Before Junk)
-		NEW_MAIL_JUNK: 2,    // Getting New Mail (After Junk) - Note: Often combined with 1 in modern TB
-		MANUAL: 16,          // Manually Run
-		SENDING: 32,         // After Sending
-		ARCHIVE: 64,         // Archiving
-		PERIODIC: 128        // Periodically
-	},
+import {
+	FILTER_TYPES,
+	DEFAULT_FILTER_TYPE,
+	PLACEHOLDER_URI,
+	PATH_SEPARATOR,
+	REGEX_PATTERNS
+} from '../config/constants.js'
 
-	/**
-	 * Main parser: Extracts structured data from raw file content.
-	 * @param {string} content - Raw msgFilterRules.dat content
-	 * @returns {Array<{path: string, emails: string[], uri: string, enabled: boolean}>}
-	 */
-	parse(content) {
-		if (!content) return []
-		const rules = []
-		
-		// Split by 'name=' to isolate rules roughly
-		const blocks = content.split(/^name=/m)
-		
-		for (const block of blocks) {
-			if (!block.trim()) continue
+import { unique, sortBy } from '../utils/data.js'
+import { curry } from '../utils/functional.js'
 
-			// 1. Extract Action URI (Move to folder)
-			const uri = this.extractUriFromBlock(block)
-			const path = uri ? this.uriToPath(uri) : null
-			if (!path) continue
+// ============================================================================
+// URI & Path Operations
+// ============================================================================
 
-			// 2. Extract Emails from Conditions
-			// Matches: (from, contains, "email") or (from, is, email)
-			const emails = []
-			const condRegex = /\(from\s*,\s*(?:contains|is)\s*,\s*([^)]+)\)/gi
-			let match
-			while ((match = condRegex.exec(block)) !== null) {
-				const rawEmail = match[1].replace(/^"|"$/g, '').trim().toLowerCase()
-				if (rawEmail.includes('@')) emails.push(rawEmail)
-			}
+/**
+ * Extract action URI from a rule block
+ * @param {string} block - Rule block content
+ * @returns {string|null} Extracted URI or null
+ */
+export const extractUriFromBlock = (block) => {
+	const match = block.match(REGEX_PATTERNS.ACTION_URI)
+	return match ? match[1] : null
+}
 
-			rules.push({
-				path,
-				emails,
-				uri,
-				enabled: block.includes('enabled="yes"')
-			})
+/**
+ * Extract base URI prefix from content (imap://user@host)
+ * @param {string} content - Rules file content
+ * @returns {string} Base URI or placeholder
+ */
+export const extractBaseUri = (content) => {
+	const match = content && content.match(REGEX_PATTERNS.BASE_URI)
+	return match ? match[1] : PLACEHOLDER_URI
+}
+
+/**
+ * Convert IMAP/Mailbox URI to Folder Path
+ * @param {string} uri - Full URI
+ * @returns {string|null} Decoded path or null
+ */
+export const uriToPath = (uri) => {
+	const match = uri.match(REGEX_PATTERNS.URI_TO_PATH)
+	return match ? decodeURIComponent(match[1]) : null
+}
+
+/**
+ * Extract folder path from a rule block
+ * @param {string} block - Rule block content
+ * @returns {string|null} Folder path or null
+ */
+export const extractPathFromBlock = (block) => {
+	const uri = extractUriFromBlock(block)
+	return uri ? uriToPath(uri) : null
+}
+
+/**
+ * Convert email to reverse-domain path (bob@foo.co.uk -> uk/co/foo/bob)
+ * @param {string} email - Email address
+ * @returns {string|null} Path or null if invalid email
+ */
+export const emailToPath = (email) => {
+	const parts = email.toLowerCase().trim().split('@')
+	if (parts.length !== 2) return null
+	
+	const [user, domain] = parts
+	return [...domain.split('.').reverse(), user].join(PATH_SEPARATOR)
+}
+
+/**
+ * Build full URI from base and path
+ * @param {string} baseUri - Base URI (e.g., imap://user@host)
+ * @param {string} path - Folder path
+ * @returns {string} Full URI with encoded path segments
+ */
+export const buildFullUri = curry((baseUri, path) => {
+	const encodedPath = path.split(PATH_SEPARATOR)
+		.map(encodeURIComponent)
+		.join(PATH_SEPARATOR)
+	return `${baseUri}${PATH_SEPARATOR}${encodedPath}`
+})
+
+// ============================================================================
+// Email Extraction
+// ============================================================================
+
+/**
+ * Extract emails from conditions in a rule block
+ * @param {string} block - Rule block content
+ * @returns {string[]} Array of email addresses
+ */
+export const extractEmailsFromBlock = (block) => {
+	const emails = []
+	const condRegex = new RegExp(REGEX_PATTERNS.EMAIL_CONDITION.source, 'gi')
+	let match
+	
+	while ((match = condRegex.exec(block)) !== null) {
+		const rawEmail = match[1].replace(/^"|"$/g, '').trim().toLowerCase()
+		if (rawEmail.includes('@')) {
+			emails.push(rawEmail)
 		}
-		return rules
-	},
+	}
+	
+	return emails
+}
 
-	/**
-	 * Sorts the raw content of a msgFilterRules.dat file by target folder path.
-	 */
-	sortRawRules(content) {
-		const marker = 'name="';
-		const firstIdx = content.indexOf(marker);
-		if (firstIdx === -1) return content;
+// ============================================================================
+// Rule Parsing
+// ============================================================================
 
-		const header = content.substring(0, firstIdx);
-		// Split using lookahead to keep the delimiter at the start of each block
-		const rawRules = content.substring(firstIdx).split(/(?=name=")/);
+/**
+ * Parse a single rule block into structured data
+ * @param {string} block - Single rule block
+ * @returns {Object|null} Parsed rule or null if invalid
+ */
+export const parseRuleBlock = (block) => {
+	if (!block.trim()) return null
+	
+	const uri = extractUriFromBlock(block)
+	const path = uri ? uriToPath(uri) : null
+	if (!path) return null
+	
+	const emails = extractEmailsFromBlock(block)
+	
+	return {
+		path,
+		emails,
+		uri,
+		enabled: block.includes('enabled="yes"')
+	}
+}
 
-		rawRules.sort((a, b) => {
-			// Extract path or default to zzz to put non-movers at the end
-			const pathA = (this.extractPathFromBlock(a) || 'zzz').toLowerCase();
-			const pathB = (this.extractPathFromBlock(b) || 'zzz').toLowerCase();
-			return pathA.localeCompare(pathB);
-		});
+/**
+ * Parse filter rules content into structured data
+ * @param {string} content - Raw msgFilterRules.dat content
+ * @returns {Array<Object>} Array of parsed rules
+ */
+export const parse = (content) => {
+	if (!content) return []
+	
+	const blocks = content.split(REGEX_PATTERNS.RULE_NAME_MARKER)
+	
+	return blocks
+		.map(parseRuleBlock)
+		.filter(Boolean)
+}
 
-		return header + rawRules.join('');
-	},
+// ============================================================================
+// Filter Type Calculations
+// ============================================================================
 
-	extractUriFromBlock(block) {
-		// Matches: action="Move to folder" ... actionValue="imap://..."
-		// Note: actionValue might be on a new line
-		const match = block.match(/action="Move to folder"[\s\S]*?actionValue="([^"]+)"/);
-		return match ? match[1] : null;
-	},
+/**
+ * Calculate filter type bitmask from options
+ * @param {Object} options - Boolean flags for each filter type
+ * @param {boolean} options.manual - Manual run
+ * @param {boolean} options.newMail - New mail trigger
+ * @param {boolean} options.afterSending - After sending trigger
+ * @param {boolean} options.archiving - Archiving trigger
+ * @param {boolean} options.periodic - Periodic trigger
+ * @returns {number} Calculated bitmask
+ */
+export const calculateType = (options) => {
+	let value = 0
+	
+	if (options.newMail) value += FILTER_TYPES.NEW_MAIL
+	if (options.manual) value += FILTER_TYPES.MANUAL
+	if (options.afterSending) value += FILTER_TYPES.SENDING
+	if (options.archiving) value += FILTER_TYPES.ARCHIVE
+	if (options.periodic) value += FILTER_TYPES.PERIODIC
+	
+	// Default to 17 (Manual + New Mail) if nothing selected
+	return value === 0 ? DEFAULT_FILTER_TYPE : value
+}
 
-	extractPathFromBlock(block) {
-		const uri = this.extractUriFromBlock(block);
-		return uri ? this.uriToPath(uri) : null;
-	},
+// ============================================================================
+// Rule Generation
+// ============================================================================
 
-	/**
-	 * Extract Base URI prefix from content (imap://user@host)
-	 */
-	extractBaseUri(content) {
-		const match = content && content.match(/actionValue="(imap:\/\/[^/]+)\//)
-		return match ? match[1] : "imap://REPLACE_ME"
-	},
-
-	/**
-	 * Convert IMAP/Mailbox URI to Folder Path
-	 */
-	uriToPath(uri) {
-		// Matches: imap://user@host/Path or mailbox://host/Path
-		const match = uri.match(/(?:imap|mailbox):\/\/[^/]+(?:\@[^/]+)?\/(.+)/)
-		return match ? decodeURIComponent(match[1]) : null
-	},
-
-	/**
-	 * Convert Email to Path (bob@foo.co.uk -> uk/co/foo/bob)
-	 */
-	emailToPath(email) {
-		const parts = email.toLowerCase().trim().split('@')
-		if (parts.length !== 2) return null
-		const [user, domain] = parts
-		return [...domain.split('.').reverse(), user].join('/')
-	},
-
-	/**
-	 * Infer Root path from existing rule structure
-	 */
-	inferRoot(parsedRules) {
-		const counts = new Map()
-		parsedRules.forEach(rule => {
-			rule.emails.forEach(email => {
-				const suffix = this.emailToPath(email)
-				const path = rule.path.toLowerCase()
-				if (suffix && path.endsWith(suffix.toLowerCase())) {
-					const root = rule.path.substring(0, rule.path.length - suffix.length).replace(/\/$/, '')
-					counts.set(root, (counts.get(root) || 0) + 1)
-				}
-			})
-		})
-		
-		// Return root with max votes
-		let best = null, max = 0
-		for (const [root, count] of counts) {
-			if (count > max) { max = count; best = root; }
-		}
-		return best
-	},
-
-	/**
-	 * Calculate the 'type' bitmask based on boolean options
-	 * @param {Object} options - { manual, newMail, afterSending, archiving, periodic }
-	 * @returns {number}
-	 */
-	calculateType(options) {
-		let val = 0;
-		if (options.newMail) val += this.TYPES.NEW_MAIL;
-		if (options.manual) val += this.TYPES.MANUAL;
-		if (options.afterSending) val += this.TYPES.SENDING;
-		if (options.archiving) val += this.TYPES.ARCHIVE;
-		if (options.periodic) val += this.TYPES.PERIODIC;
-		// Default to 17 (Manual + New Mail) if nothing selected to avoid broken rules
-		return val === 0 ? 17 : val;
-	},
-
-	/**
-	 * Generate msgFilterRules.dat entry
-	 */
-	generateBlock(baseUri, email, path, typeValue = 17) {
-		const fullUri = `${baseUri}/${path.split('/').map(encodeURIComponent).join('/')}`
-		return `name="From ${email}"
+/**
+ * Generate a single filter rule block
+ * @param {string} baseUri - Base IMAP URI
+ * @param {string} email - Email address to filter
+ * @param {string} path - Target folder path
+ * @param {number} typeValue - Filter type bitmask (default: 17)
+ * @returns {string} Filter rule block
+ */
+export const generateBlock = curry((baseUri, email, path, typeValue = DEFAULT_FILTER_TYPE) => {
+	const fullUri = buildFullUri(baseUri, path)
+	
+	return `name="From ${email}"
 enabled="yes"
 type="${typeValue}"
 action="Move to folder"
 actionValue="${fullUri}"
 condition="AND (from,contains,${email})"`
-	},
+})
 
-	/**
-	 * Bulk update the 'type' attribute in a raw rules content string
-	 */
-	updateFilterTypes(content, newTypeValue) {
-		// Regex to find type="number" inside entries
-		// We use a global replace.
-		return content.replace(/type="\d+"/g, `type="${newTypeValue}"`);
+// ============================================================================
+// Rule Sorting
+// ============================================================================
+
+/**
+ * Sort rule blocks by path
+ * @param {string} a - First rule block
+ * @param {string} b - Second rule block
+ * @returns {number} Sort comparison result
+ */
+const compareRulesByPath = (a, b) => {
+	// Extract path or default to 'zzz' to put non-movers at end
+	const pathA = (extractPathFromBlock(a) || 'zzz').toLowerCase()
+	const pathB = (extractPathFromBlock(b) || 'zzz').toLowerCase()
+	return pathA.localeCompare(pathB)
+}
+
+/**
+ * Sort raw filter rules content alphabetically by target path
+ * @param {string} content - Raw rules content
+ * @returns {string} Sorted content
+ */
+export const sortRawRules = (content) => {
+	const marker = 'name="'
+	const firstIdx = content.indexOf(marker)
+	if (firstIdx === -1) return content
+	
+	const header = content.substring(0, firstIdx)
+	const rulesContent = content.substring(firstIdx)
+	
+	// Split using lookahead to keep delimiter at start of each block
+	const rawRules = rulesContent.split(REGEX_PATTERNS.RULE_NAME_SPLIT)
+	
+	const sortedRules = sortBy(compareRulesByPath, rawRules)
+	
+	return header + sortedRules.join('')
+}
+
+// ============================================================================
+// Bulk Operations
+// ============================================================================
+
+/**
+ * Update all filter type values in content
+ * @param {string} content - Raw rules content
+ * @param {number} newTypeValue - New type value to apply
+ * @returns {string} Updated content
+ */
+export const updateFilterTypes = curry((content, newTypeValue) => {
+	return content.replace(REGEX_PATTERNS.TYPE_ATTRIBUTE, `type="${newTypeValue}"`)
+})
+
+// ============================================================================
+// Path Inference
+// ============================================================================
+
+/**
+ * Count occurrences of each root path
+ * @param {Array<Object>} parsedRules - Parsed rules
+ * @returns {Map<string, number>} Map of root paths to counts
+ */
+const countRootPaths = (parsedRules) => {
+	const counts = new Map()
+	
+	parsedRules.forEach(rule => {
+		rule.emails.forEach(email => {
+			const suffix = emailToPath(email)
+			const path = rule.path.toLowerCase()
+			
+			if (suffix && path.endsWith(suffix.toLowerCase())) {
+				const root = rule.path
+					.substring(0, rule.path.length - suffix.length)
+					.replace(/\/$/, '')
+				
+				counts.set(root, (counts.get(root) || 0) + 1)
+			}
+		})
+	})
+	
+	return counts
+}
+
+/**
+ * Find root path with maximum count
+ * @param {Map<string, number>} counts - Path counts
+ * @returns {string|null} Most common root path or null
+ */
+const findMaxCount = (counts) => {
+	let best = null
+	let max = 0
+	
+	for (const [root, count] of counts) {
+		if (count > max) {
+			max = count
+			best = root
+		}
 	}
+	
+	return best
+}
+
+/**
+ * Infer root path from existing rule structure
+ * @param {Array<Object>} parsedRules - Parsed rules
+ * @returns {string|null} Inferred root path or null
+ */
+export const inferRoot = (parsedRules) => {
+	const counts = countRootPaths(parsedRules)
+	return findMaxCount(counts)
+}
+
+// ============================================================================
+// Helper Compositions
+// ============================================================================
+
+/**
+ * Get unique paths from rules
+ * @param {Array<Object>} rules - Parsed rules
+ * @returns {Array<string>} Unique paths
+ */
+export const getUniquePaths = (rules) => {
+	return unique(rules.map(r => r.path))
+}
+
+/**
+ * Get all emails from rules
+ * @param {Array<Object>} rules - Parsed rules
+ * @returns {Array<string>} All emails (flattened)
+ */
+export const getAllEmails = (rules) => {
+	return rules.flatMap(r => r.emails)
+}
+
+/**
+ * Get unique emails from rules
+ * @param {Array<Object>} rules - Parsed rules
+ * @returns {Array<string>} Unique emails
+ */
+export const getUniqueEmails = (rules) => {
+	return unique(getAllEmails(rules))
+}
+
+// ============================================================================
+// Legacy Namespace Export (for backward compatibility during migration)
+// ============================================================================
+
+export const RuleEngine = {
+	TYPES: FILTER_TYPES,
+	parse,
+	sortRawRules,
+	extractUriFromBlock,
+	extractPathFromBlock,
+	extractBaseUri,
+	uriToPath,
+	emailToPath,
+	inferRoot,
+	calculateType,
+	generateBlock,
+	updateFilterTypes,
+	// New exports
+	buildFullUri,
+	extractEmailsFromBlock,
+	parseRuleBlock,
+	getUniquePaths,
+	getAllEmails,
+	getUniqueEmails
 }
