@@ -6,12 +6,12 @@
 | Rule Generator | iframe          | Todo   | Complex functionality with its own state management. Isolated textarea, independent download functionality. Needs communication with parent for account data. |
 | Tabs           | HTML components | Done   | Heavy integration with main application state                                                                                                                 |
 
-2. **Shared Configuration Section**
+1. **Shared Configuration Section**
    - **Why**: Central to all functionality, needs real-time sync
    - **Issues**: State synchronization complexity
    - **Better Approach**: Shared component with event-driven updates
 
-3. **Header Section**
+2. **Header Section**
    - **Why**: Simple UI with minimal functionality
    - **Issues**: Overkill for simple button and title
    - **Better Approach**: Simple HTML component
@@ -21,6 +21,7 @@
 Instead of iframes for most components, use HTML includes with a lightweight assembly system:
 
 ### Component Include Pattern
+
 ```html
 <!-- In main ui.html -->
 <div class="component-container" data-component="shared-config">
@@ -29,6 +30,7 @@ Instead of iframes for most components, use HTML includes with a lightweight ass
 ```
 
 ### Benefits Over Iframes
+
 - **Performance**: No additional document overhead
 - **Styling**: Shared CSS scope for consistent theming
 - **Communication**: Direct DOM access and event handling
@@ -60,6 +62,7 @@ ext/html/cmp/
 ### 1. Shared Components
 
 #### Header Component (`html/cmp/shared/header.html`)
+
 ```html
 <header class="main-header">
   <h1 data-i18n="extensionName"></h1>
@@ -70,6 +73,7 @@ ext/html/cmp/
 ```
 
 #### Shared Config Component (`html/cmp/shared/shared-config.html`)
+
 ```html
 <section class="card shared-config">
   <label for="account" data-i18n="imapAccount"></label>
@@ -94,6 +98,7 @@ ext/html/cmp/
 ```
 
 #### Tab Navigation Component (`html/cmp/shared/tab-navigation.html`)
+
 ```html
 <div class="tabs-container">
   <input type="radio" name="tabs" id="tabInputFolders" checked>
@@ -110,6 +115,7 @@ ext/html/cmp/
 ### 2. Analysis Components
 
 #### Analysis Form Component (`html/cmp/analysis/analysis-form.html`)
+
 ```html
 <div class="tab-content" id="contentFolders">
   <section class="card">
@@ -146,6 +152,7 @@ ext/html/cmp/
 ```
 
 #### Analysis Results Component (`html/cmp/analysis/analysis-results.html`)
+
 ```html
 <section id="analysisResults" class="card">
   <h2 data-i18n="resultsHeader">Results</h2>
@@ -174,6 +181,7 @@ ext/html/cmp/
 ### 3. Discovery Components
 
 #### Discovery Form Component (`html/cmp/discovery/discovery-form.html`)
+
 ```html
 <div class="tab-content" id="contentDiscovery">
   <section class="card">
@@ -202,6 +210,7 @@ ext/html/cmp/
 ```
 
 #### Discovery Results Component (`html/cmp/discovery/discovery-results.html`)
+
 ```html
 <section id="discoveryResults" class="card discovery-list hidden">
   <div class="list-header">
@@ -226,6 +235,7 @@ ext/html/cmp/
 ```
 
 #### Rule Generation Component (`html/cmp/discovery/rule-generation.html`)
+
 ```html
 <section id="genRulesArea" class="card hidden">
   <h3 data-i18n="generatedRulesHeader"></h3>
@@ -261,6 +271,7 @@ ext/html/cmp/
 ### 4. Modal Component
 
 #### Settings Modal Component (`html/cmp/modal/settings-modal.html`)
+
 ```html
 <div id="settingsModal" class="modal-overlay">
   <div class="modal-content">
@@ -376,6 +387,7 @@ class ComponentLoader {
 ### Phase 1: Foundation Setup (Day 1)
 
 1. **Create Component Directory Structure**
+
    ```bash
    mkdir -p ext/html/cmp/{shared,analysis,discovery,modal}
    ```
@@ -385,6 +397,7 @@ class ComponentLoader {
    - Implement component loading functionality
 
 3. **Backup Current Implementation**
+
    ```bash
    cp ext/ui.html ext/ui.html.backup
    cp ext/ui.js ext/ui.js.backup
@@ -446,7 +459,9 @@ class ComponentLoader {
 ## CSS Architecture
 
 ### Current CSS Structure (Maintained)
+
 The current CSS is well-organized and should be maintained:
+
 - **Base styles** ([`base.css`](../../ext/css/base.css))
 - **Layout components** ([`layout.css`](../../ext/css/layout.css))
 - **Theme variables** ([`theme.css`](../../ext/css/theme.css))
@@ -454,7 +469,9 @@ The current CSS is well-organized and should be maintained:
 - **Utility styles** in [`css/util/`](../../ext/css/util) directory
 
 ### Component-Specific CSS (Optional)
+
 For complex components, optional component-specific CSS files can be added:
+
 - `html/cmp/shared/shared.css` - Shared component overrides
 - `html/cmp/analysis/analysis.css` - Analysis component overrides
 - `html/cmp/discovery/discovery.css` - Discovery component overrides
@@ -462,12 +479,14 @@ For complex components, optional component-specific CSS files can be added:
 ## Benefits of This Approach
 
 ### Immediate Benefits
+
 - **Maintainability**: Smaller, focused files easier to edit
 - **Development velocity**: Multiple developers can work on different components
 - **Code organization**: Clear separation of concerns
 - **Testing**: Components can be tested in isolation
 
 ### Long-term Benefits
+
 - **Reusability**: Components can be reused in future features
 - **Scalability**: Easy to add new components or modify existing ones
 - **Performance**: Better caching and loading optimization
@@ -494,7 +513,9 @@ For complex components, optional component-specific CSS files can be added:
    - **Mitigation**: Implement component loading optimization, consider bundling
 
 ### Rollback Plan
+
 If critical issues arise:
+
 1. Restore backup files: `cp ext/ui.html.backup ext/ui.html`
 2. Restore JavaScript backup: `cp ext/ui.js.backup ext/ui.js`
 3. Remove component directory: `rm -rf ext/html/cmp/`
@@ -503,18 +524,21 @@ If critical issues arise:
 ## Success Criteria
 
 ### Functional Requirements
+
 - [ ] All existing functionality works without regression
 - [ ] UI renders correctly in all supported Thunderbird versions
 - [ ] Component loading is reliable and error-free
 - [ ] Performance is maintained or improved
 
 ### Technical Requirements
+
 - [ ] Code is more maintainable and organized
 - [ ] Components are logically separated
 - [ ] CSS inheritance works correctly
 - [ ] JavaScript integration is seamless
 
 ### Development Requirements
+
 - [ ] Multiple developers can work on different components
 - [ ] Component files are focused and single-purpose
 - [ ] Documentation is clear and comprehensive

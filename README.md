@@ -22,27 +22,31 @@ More in [BRD](./doc/dev/req/BRD.md)
 ### Package Extension
 
 #### Option A: Load Temporary Add-on (Testing)
+
 1. Open Thunderbird
-2. Go to `Tools `->` Developer Tools `->` Debug Add-ons` (or `about:debugging`)
+2. Go to `Tools`->` Developer Tools `->`Debug Add-ons` (or `about:debugging`)
 3. Click "This Thunderbird"
 4. Click "Load Temporary Add-on"
 5. Select `manifest.json` from your folder
 6. Extension loads immediately
 
 #### Option B: Create XPI Package (Distribution)
+
 ```bash
 cd filter-folder-creator
 (cd ./ext/ && zip -r ../dist/$(basename "$(cd .. && pwd)").xpi ./*)
 ```
 
 Install XPI:
+
 1. Thunderbird `->` Tools `->` Add-ons and Themes
 2. Click gear icon `->` "Install Add-on From File"
 3. Select `filter-folder-creator.xpi`
 
 ### Test Extension
 
-#### Find msgFilterRules.dat:
+#### Find msgFilterRules.dat
+
 1. Tools `->` Account Settings
 2. Select your IMAP account
 3. Click "Server Settings"
@@ -50,7 +54,8 @@ Install XPI:
 5. Navigate to that folder
 6. Find `msgFilterRules.dat`
 
-#### Test Workflow:
+#### Test Workflow
+
 1. Click extension icon in toolbar
 2. Select IMAP account from dropdown
 3. Upload `msgFilterRules.dat` or copy/paste content

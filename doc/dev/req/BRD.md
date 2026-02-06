@@ -35,6 +35,7 @@ Automate IMAP folder management via message filter rules.
 ### Styling
 
 CSS:
+
 + variables
 + Grid
 + Flexbox
@@ -46,6 +47,7 @@ CSS:
 **Input:** User selects IMAP account + uploads/pastes `msgFilterRules.dat`
 
 **Process:**
+
 + [x] Parse filter file → extract `imap://`/`mailbox://` URIs
 + [x] Normalize to readable paths
 + [x] Recursively scan IMAP account → build folder cache
@@ -53,6 +55,7 @@ CSS:
 + [x] Optional case-insensitive merge
 
 **Output:**
+
 + [x] Stats: folder count, leaf folders, rule count
 + [x] List missing paths
 + [x] Batch-create button (recursive: A → A/B → A/B/C)
@@ -62,12 +65,14 @@ CSS:
 **Input:** Source folder + scan limit (100-5000) + target root path
 
 **Process:**
+
 + [x] Scan last N messages
 + [x] Extract unique "From" addresses
 + [x] Exclude addresses with existing rules
 + [x] Generate reverse-domain paths (`bob@google.com` -> `com/google/bob`)
 
 **Output:**
+
 + [x] Interactive list with proposed paths
 + [x] **Action A:** Batch-create folders
 + [x] **Action B:** Generate filter rules `->` append to target root
@@ -78,6 +83,7 @@ CSS:
 **Purpose:** Standardize how email addresses map to filesystem paths to ensure organized hierarchies.
 
 **Requirements:**
+
 + [x] **Reverse Domain Mapping:** Convert `user@sub.domain.tld` -> `tld/domain/sub/user`
 + [ ] **Special Character Handling:** Sanitize path segments (replace `:`, `/`, `\` with `_`)
 + [ ] **Collision Resolution:** Handle case-insensitive duplicates (e.g. `User@domain` vs `user@domain`)
@@ -88,6 +94,7 @@ CSS:
 **Purpose:** Reduce manual intervention for keeping folders and rules in sync.
 
 **Requirements:**
+
 + [ ] **Periodic Background Scan:** Run discovery logic every N minutes (configurable)
 + [ ] **Notification:** Alert user when new unmapped senders exceed a threshold
 + [ ] **Auto-Create:** Option to automatically create missing folders if they match high-confidence patterns
@@ -98,6 +105,7 @@ CSS:
 **Purpose:** Maintain state across browser restarts and efficiently handle large rule files.
 
 **Requirements:**
+
 + [ ] **Rule Storage:** Persist uploaded `msgFilterRules.dat` content in `browser.storage.local` to survive extension reloads
 + [ ] **Context Awareness:** Associate stored rules with specific IMAP account IDs
 + [ ] **Staleness Warning:** Visual indicator if the stored rules might be out of sync with the filesystem (timestamp check if possible, or manual "Last updated" label)
@@ -108,23 +116,27 @@ CSS:
 **Purpose:** Bridge local Thunderbird rules with server-side filters (e.g. Gmail Filters) to ensure processing happens even when the client is offline.
 
 **Requirements:**
+
 + [ ] **Remote Fetch:** Connect to supported providers to fetch active server-side rules
 + [ ] **Rule Translation:** Convert Thunderbird filter syntax to Sieve/XML format
 + [ ] **Sync Direction:** Choose between "Push to Server" (Overwrite remote) or "Pull from Server" (Update local)
 + [ ] **Auth Management:** Securely store OAuth tokens or credentials for rule management access
 
 **Default Supported Providers:**
+
 + [ ] Gmail
 + [ ] Yandex
 + [ ] Yahoo
 
 Should be extensible through custom:
+
 + [ ] OpenAPI YAML Spec input with mappings to generic email rule management actions
 + [ ] local rules to remote rules mapping per property
 
 #### Process
 
 **Input:**
+
 + Selected email account
 + Email server API Mapping config
 + stored necessary API auth
@@ -134,12 +146,14 @@ Should be extensible through custom:
 Flow: `Remote rules <-> Local rules`
 
 **Process:**
+
 + [ ] Request filter rules from online email account by appropriate endpoint via appropriate request
 + [ ] Display effective remote filter rules in a list
 + [ ] Allow to manage the list of filters
 + [ ] Map local rules to remote rules
 
 **Output:**
+
 + [ ] Downloaded & merged remote rules
 + [ ] Updated remote rules from local ones
 
