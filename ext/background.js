@@ -214,6 +214,79 @@ const handleCreationError = (error, path, results) => {
 	}
 }
 
+// ============================================================================
+// Folder Deletion Functions
+// ============================================================================
+
+/**
+ * Send delete progress message
+ * @param {Object} port - Message port
+ * @param {number} current - Current index
+ * @param {number} total - Total count
+ * @param {string} path - Current path
+ */
+const sendDeleteProgress = (port, current, total, path) => {
+	port.postMessage({
+		type: MESSAGE_TYPES.PROGRESS,
+		current,
+		total,
+		path
+	})
+}
+
+/**
+ * Delete folders from paths (deepest first)
+ * @param {Object} data - Deletion data
+ * @param {Object} port - Message port
+ * @returns {Promise<Object>} Deletion results
+ */
+async function deleteFolders(data, port) {
+	const { accountId, paths } = data
+	const results = { deleted: [], failed: [] }
+
+	const { folders } = await MailClient.scanAccount(accountId)
+	const folderMap = new Map(folders.map(f => [f.cleanPath.toLowerCase(), f]))
+	const sortedPaths = sortPathsByDepth(paths).reverse()
+
+	for (let i = 0; i < sortedPaths.length; i++) {
+		const path = sortedPaths[i]
+		sendDeleteProgress(port, i + 1, sortedPaths.length, path)
+		const folder = folderMap.get(path.toLowerCase())
+		if (!folder) {
+			results.failed.push({ path, error: `Folder not found: ${path}`, folder: null })
+			console.warn('Delete failed: folder not found', { path })
+			continue
+		}
+		try {
+			await messenger.folders.delete(folder.id)
+			results.deleted.push(path)
+		} catch (e) {
+			const errorMessage = e?.message || 'Delete failed'
+			results.failed.push({
+				path,
+				error: errorMessage,
+				folder: {
+					id: folder.id,
+					name: folder.name,
+					path: folder.path,
+					cleanPath: folder.cleanPath,
+					type: folder.type
+				}
+			})
+			console.error('Delete failed', {
+				path,
+				folderId: folder.id,
+				name: folder.name,
+				cleanPath: folder.cleanPath,
+				type: folder.type,
+				error: errorMessage
+			})
+		}
+	}
+
+	return results
+}
+
 /**
  * Create folders from paths
  * @param {Object} data - Creation data
@@ -292,6 +365,21 @@ const handlePortConnection = (port) => {
 		port.onMessage.addListener(async (msg) => {
 			try {
 				const results = await createFolders(msg, port)
+				port.postMessage({
+					type: MESSAGE_TYPES.COMPLETE,
+					results
+				})
+			} catch (e) {
+				port.postMessage({
+					type: MESSAGE_TYPES.ERROR,
+					error: e.message
+				})
+			}
+		})
+	} else if (port.name === PORT_NAMES.DELETE_FOLDERS) {
+		port.onMessage.addListener(async (msg) => {
+			try {
+				const results = await deleteFolders(msg, port)
 				port.postMessage({
 					type: MESSAGE_TYPES.COMPLETE,
 					results

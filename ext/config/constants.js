@@ -55,7 +55,8 @@ export const UI_TIMEOUTS = {
 
 // Message Port Names
 export const PORT_NAMES = {
-	CREATE_FOLDERS: 'create-folders'
+	CREATE_FOLDERS: 'create-folders',
+	DELETE_FOLDERS: 'delete-folders'
 }
 
 // Message Actions

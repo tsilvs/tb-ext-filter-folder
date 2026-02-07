@@ -61,6 +61,11 @@ store.subscribe((next, prev, meta) => {
 	if (next.analysis !== prev.analysis) {
 		renderAnalysis()
 	}
+	if (next.analysisMeta !== prev.analysisMeta) {
+		renderInboxDebug()
+		renderDeleteEmptyReport()
+		renderLeafRulesMissing()
+	}
 })
 
 // --- Helpers ---
@@ -180,7 +185,12 @@ const dedupeRawRulesByPath = (content) => {
 	const unique = []
 	blocks.forEach(block => {
 		const path = RuleEngine.extractPathFromBlock(block)
-		const key = path ? path.toLowerCase() : block.replace(/\r\n/g, '\n').trim()
+		const emails = RuleEngine.extractEmailsFromBlock(block)
+			.map(email => email.toLowerCase())
+			.sort()
+		const key = path
+			? `${path.toLowerCase()}|${emails.join(',')}`
+			: block.replace(/\r\n/g, '\n').trim()
 		if (seen.has(key)) return
 		seen.add(key)
 		unique.push(block)
@@ -317,6 +327,9 @@ function renderAnalysis() {
 		$('mismatchedDetails')?.classList.add('hidden')
 		$('emptyFoldersDetails')?.classList.add('hidden')
 		$('invalidRulesDetails')?.classList.add('hidden')
+		$('inboxDebugPanel')?.classList.add('hidden')
+		$('deleteEmptyDetails')?.classList.add('hidden')
+		$('leafRulesMissingDetails')?.classList.add('hidden')
 		if ($('btnGenMissingInbox')) $('btnGenMissingInbox').disabled = true
 		if ($('btnGenMissingLeaf')) $('btnGenMissingLeaf').disabled = true
 		if ($('btnGenMismatched')) $('btnGenMismatched').disabled = true
@@ -381,6 +394,85 @@ function renderAnalysis() {
 	if ($('btnGenMismatched')) $('btnGenMismatched').disabled = mismatchedFolders.length === 0
 	if ($('btnDeleteEmptyFolders')) $('btnDeleteEmptyFolders').disabled = emptyLeafFolders.length === 0
 	if ($('btnDeleteInvalidRules')) $('btnDeleteInvalidRules').disabled = invalidRules.length === 0
+}
+
+function renderLeafRulesMissing() {
+	const container = $('leafRulesMissingDetails')
+	const list = $('listLeafRulesMissing')
+	if (!container || !list) return
+	const missing = state.analysisMeta?.leafRulesMissing || []
+	container.classList.toggle('hidden', missing.length === 0)
+	list.innerHTML = ''
+	missing.forEach(path => {
+		const div = document.createElement('div')
+		div.className = 'folder-item pending'
+		div.textContent = path
+		list.appendChild(div)
+	})
+}
+
+function renderInboxDebug() {
+	const panel = $('inboxDebugPanel')
+	const report = $('inboxDebugReport')
+	if (!panel || !report) return
+
+	const meta = state.analysisMeta?.inbox
+	if (!meta) {
+		report.textContent = 'Inbox debug data is not available yet.'
+		panel.classList.add('hidden')
+		return
+	}
+
+	const lines = []
+	lines.push(`Current Root: ${meta.rootPath || '(account root)'}`)
+	lines.push(`Source Folder: ${meta.sourceFolder?.name || 'Unknown'} (${meta.sourceFolder?.path || 'n/a'})`)
+	lines.push(`Scan Limit: ${meta.scanLimit}`)
+	lines.push(`Rule Emails: ${meta.ruleEmailCount}`)
+	lines.push(`Inbox Senders: ${meta.totalSenders} (${meta.uniqueSenders} unique, ${meta.duplicateSenders} duplicates)`)
+	lines.push(`Missing Rules (Inbox): ${meta.missingCount} (${meta.missingUniqueCount} unique)`) 
+	lines.push(`Matched Rules (Inbox): ${meta.matchedCount}`)
+	lines.push(`Mismatched Paths (Inbox): ${meta.mismatchedCount}`)
+	lines.push(`Invalid Emails (Inbox): ${meta.invalidEmailCount}`)
+	lines.push('')
+	lines.push(`Missing Inbox Emails (unique, showing ${Math.min(meta.missingEmails.length, 200)} of ${meta.missingEmails.length}):`)
+	meta.missingEmails.slice(0, 200).forEach(email => lines.push(`- ${email}`))
+	lines.push('')
+	lines.push(`Mismatched Inbox Rules (showing ${Math.min(meta.mismatchedRules.length, 200)} of ${meta.mismatchedRules.length}):`)
+	meta.mismatchedRules.slice(0, 200).forEach(item => lines.push(`- ${item.email}: rule=${item.rulePath} expected=${item.expectedPath}`))
+	lines.push('')
+	lines.push(`Invalid Inbox Emails (showing ${Math.min(meta.invalidEmails.length, 200)} of ${meta.invalidEmails.length}):`)
+	meta.invalidEmails.slice(0, 200).forEach(email => lines.push(`- ${email}`))
+	lines.push('')
+	lines.push(`Inbox Emails (unique, showing ${Math.min(meta.inboxEmails.length, 200)} of ${meta.inboxEmails.length}):`)
+	meta.inboxEmails.slice(0, 200).forEach(email => lines.push(`- ${email}`))
+
+	report.textContent = lines.join('\n')
+	panel.classList.remove('hidden')
+}
+
+function renderDeleteEmptyReport() {
+	const panel = $('deleteEmptyDetails')
+	const report = $('deleteEmptyReport')
+	if (!panel || !report) return
+
+	const meta = state.analysisMeta?.deleteEmpty
+	if (!meta) {
+		report.textContent = ''
+		panel.classList.add('hidden')
+		return
+	}
+
+	const lines = []
+	lines.push(`Deleted: ${meta.deleted}`)
+	lines.push(`Failed: ${meta.failed}`)
+	lines.push('')
+	lines.push(`Failures (showing ${Math.min(meta.failures.length, 200)} of ${meta.failures.length}):`)
+	meta.failures.slice(0, 200).forEach(item => {
+		lines.push(`- ${item.path}: ${item.error}`)
+	})
+
+	report.textContent = lines.join('\n')
+	panel.classList.remove('hidden')
 }
 
 function renderMissingList() {
@@ -791,6 +883,31 @@ async function runCreate(paths, statusId, btn) {
 	})
 }
 
+async function runDelete(paths, statusId, btn) {
+	btn.disabled = true
+	setStatus(statusId, 'Deleting folders...', 'progress')
+
+	const port = browserApi.runtime.connect({ name: 'delete-folders' })
+	const accountId = $('account').value
+
+	return new Promise(resolve => {
+		port.onMessage.addListener(msg => {
+			if (msg.type === 'progress') {
+				setStatus(statusId, `${msg.current}/${msg.total}: ${msg.path}`, 'progress')
+			} else if (msg.type === 'complete') {
+				setStatus(statusId, `Deleted ${msg.results.deleted.length}, failed ${msg.results.failed.length}`, 'success')
+				port.disconnect()
+				btn.disabled = false
+				resolve(msg.results)
+			} else if (msg.type === 'error') {
+				setStatus(statusId, msg.error, 'error')
+				btn.disabled = false
+			}
+		})
+		port.postMessage({ action: 'delete', accountId, paths })
+	})
+}
+
 // --- Events ---
 document.addEventListener('DOMContentLoaded', async () => {
 	// I18N
@@ -1015,20 +1132,74 @@ document.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 
-		const ruleEmails = new Set(RuleEngine.parse($('currentRules')?.value || '').flatMap(rule => rule.emails))
+		const parsedRules = RuleEngine.parse($('currentRules')?.value || '')
+		const ruleEmails = new Set(parsedRules.flatMap(rule => rule.emails))
+		const ruleEmailMap = buildEmailToRulePathMap(parsedRules)
+		const rulePaths = RuleEngine.getUniquePaths(parsedRules)
+		const rootPrefix = currentRoot ? `${currentRoot}/` : ''
+		const scopedRulePaths = currentRoot
+			? rulePaths.filter(path => path === currentRoot || path.startsWith(rootPrefix))
+			: rulePaths
+		const rulePathSet = new Set(scopedRulePaths.map(path => (currentMerge ? path.toLowerCase() : path)))
+		const leafRulesMissing = stats.leafPaths.filter(path => !rulePathSet.has(currentMerge ? path.toLowerCase() : path))
 		const missingInboxRules = inboxEmails.filter(email => !ruleEmails.has(email))
+		const uniqueInboxEmails = Array.from(new Set(inboxEmails))
+		const uniqueMissingInbox = Array.from(new Set(missingInboxRules))
+		const mismatchedRules = []
+		const invalidEmails = []
+		let matchedCount = 0
+		uniqueInboxEmails.forEach(email => {
+			const expectedSuffix = RuleEngine.emailToPath(email)
+			if (!expectedSuffix) {
+				invalidEmails.push(email)
+				return
+			}
+			const expectedPath = currentRoot ? `${currentRoot}/${expectedSuffix}` : expectedSuffix
+			const rulePath = ruleEmailMap.get(email)
+			if (!rulePath) return
+			if (rulePath !== expectedPath) {
+				mismatchedRules.push({ email, rulePath, expectedPath })
+			} else {
+				matchedCount += 1
+			}
+		})
+		const sourceMeta = sourceFolder
+			? { id: sourceFolder.id, name: sourceFolder.name, path: sourceFolder.cleanPath || sourceFolder.path || '' }
+			: null
 
 		const analysis = analyzeRulesAndFolders(currentRoot, leafEmailMap)
 		const invalidRules = analysis.mismatchedRules.filter(item => item.rulePath)
-		store.setState({
+		store.setState(prev => ({
 			analysis: {
 				missingInboxRules,
 				missingLeafRules: analysis.missingRules,
 				mismatchedFolders: analysis.mismatchedRules,
 				emptyLeafFolders: emptyFolders,
 				invalidRules
+			},
+			analysisMeta: {
+				...(prev.analysisMeta || {}),
+				inbox: {
+					rootPath: currentRoot,
+					sourceFolder: sourceMeta,
+					scanLimit: state.config.scanLimit,
+					ruleEmailCount: ruleEmails.size,
+					totalSenders: inboxEmails.length,
+					uniqueSenders: uniqueInboxEmails.length,
+					duplicateSenders: inboxEmails.length - uniqueInboxEmails.length,
+					missingCount: missingInboxRules.length,
+					missingUniqueCount: uniqueMissingInbox.length,
+					matchedCount,
+					mismatchedCount: mismatchedRules.length,
+					invalidEmailCount: invalidEmails.length,
+					missingEmails: uniqueMissingInbox,
+					mismatchedRules,
+					invalidEmails,
+					inboxEmails: uniqueInboxEmails
+				},
+				leafRulesMissing
 			}
-		}, { type: 'analysis:results' })
+		}), { type: 'analysis:results' })
 		setStatus('statusFolders', 'Done', 'success')
 		btn.disabled = false
 		setProcessing(false, 'folders')
@@ -1127,7 +1298,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const btnDeleteEmptyFolders = $('btnDeleteEmptyFolders')
 	if (btnDeleteEmptyFolders) btnDeleteEmptyFolders.onclick = async () => {
 		await withButtonBusy(btnDeleteEmptyFolders, async () => {
-			setStatus('statusDeleteEmpty', 'Delete empty folders is not supported by the Thunderbird API.', 'warning')
+			const emptyLeafFolders = state.analysis?.emptyLeafFolders || []
+			if (emptyLeafFolders.length === 0) {
+				setStatus('statusDeleteEmpty', 'No empty folders to delete.', 'info')
+				return
+			}
+			const warnings = collectPathWarnings(emptyLeafFolders, { checkEncoding: false })
+			if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
+			const results = await runDelete(emptyLeafFolders, 'statusDeleteEmpty', btnDeleteEmptyFolders)
+			store.setState(prev => ({
+				analysisMeta: {
+					...(prev.analysisMeta || {}),
+					deleteEmpty: {
+						deleted: results?.deleted?.length || 0,
+						failed: results?.failed?.length || 0,
+						failures: results?.failed || []
+					}
+				}
+			}), { type: 'analysis:delete-empty' })
 			await $('btnAnalyze')?.click()
 		})
 	}

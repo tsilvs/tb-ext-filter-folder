@@ -16,6 +16,7 @@
 		"storage",
 		"accountsRead",
 		"accountsFolders",
+		"messagesDelete",
 		"messagesRead"
 	],
 	"options_ui": {
