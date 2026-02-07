@@ -4,29 +4,35 @@
  */
 
 // Default Configuration Values
+export const FILTER_TYPES = {
+	PRE_JUNK: 1,
+	MANUAL: 16,
+	POST_JUNK: 32,
+	SENDING: 64,
+	ARCHIVE: 128,
+	PERIODIC: 256
+}
+
+export const DEFAULT_FILTER_CONFIG = [
+	{ id: 'preJunk', value: FILTER_TYPES.PRE_JUNK, label: 'optPreJunk', enabled: false },
+	{ id: 'manual', value: FILTER_TYPES.MANUAL, label: 'optManual', enabled: true },
+	{ id: 'postJunk', value: FILTER_TYPES.POST_JUNK, label: 'optPostJunk', enabled: true },
+	{ id: 'sending', value: FILTER_TYPES.SENDING, label: 'optSending', enabled: false },
+	{ id: 'archive', value: FILTER_TYPES.ARCHIVE, label: 'optArchive', enabled: false },
+	{ id: 'periodic', value: FILTER_TYPES.PERIODIC, label: 'optPeriodic', enabled: false }
+]
+
 export const DEFAULT_CONFIG = {
 	mergeCase: true,
 	scanLimit: 500,
 	defaultRoot: '',
-	filterManual: true,
-	filterNewMail: true,
-	filterSending: false,
-	filterArchive: false,
-	filterPeriodic: false
+	folderRoot: '',
+	filters: DEFAULT_FILTER_CONFIG,
+	accountPreferences: {}
 }
 
-// Filter Type Bitmasks (Thunderbird specification)
-export const FILTER_TYPES = {
-	NEW_MAIL: 1,         // Getting New Mail (Before Junk)
-	NEW_MAIL_JUNK: 2,    // Getting New Mail (After Junk)
-	MANUAL: 16,          // Manually Run
-	SENDING: 32,         // After Sending
-	ARCHIVE: 64,         // Archiving
-	PERIODIC: 128        // Periodically
-}
-
-// Default filter type combination (Manual + New Mail)
-export const DEFAULT_FILTER_TYPE = FILTER_TYPES.MANUAL + FILTER_TYPES.NEW_MAIL // 17
+// Default filter type combination (Manual + Post-Junk)
+export const DEFAULT_FILTER_TYPE = FILTER_TYPES.MANUAL + FILTER_TYPES.POST_JUNK // 48
 
 // URI Constants
 export const URI_SCHEMES = {
@@ -56,7 +62,8 @@ export const PORT_NAMES = {
 export const MESSAGE_ACTIONS = {
 	ANALYZE: 'analyze',
 	SCAN_MESSAGES: 'scanMessages',
-	CREATE: 'create'
+	CREATE: 'create',
+	SCAN_FOLDER_SENDERS: 'scanFolderSenders'
 }
 
 // Message Types (for port communication)
@@ -71,9 +78,9 @@ export const MESSAGE_TYPES = {
 export const REGEX_PATTERNS = {
 	RULE_NAME_MARKER: /^name=/m,
 	RULE_NAME_SPLIT: /(?=name=")/,
-	ACTION_URI: /action="Move to folder"[\s\S]*?actionValue="([^"]+)"/,
+	ACTION_URI: /action="(?:Move|Copy) to folder"[\s\S]*?actionValue="([^"]+)"/,
 	EMAIL_CONDITION: /\(from\s*,\s*(?:contains|is)\s*,\s*([^)]+)\)/gi,
-	BASE_URI: /actionValue="(imap:\/\/[^/]+)\//,
+	BASE_URI: /actionValue="((?:imap|mailbox):\/\/[^/]+)\//,
 	URI_TO_PATH: /(?:imap|mailbox):\/\/[^/]+(?:@[^/]+)?\/(.+)/,
 	TYPE_ATTRIBUTE: /type="\d+"/g
 }

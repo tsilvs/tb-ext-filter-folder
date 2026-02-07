@@ -11,6 +11,7 @@ import {
 	PATH_SEPARATOR,
 	REGEX_PATTERNS
 } from '../config/constants.js'
+import { encodePath, decodePath } from '../utils/pathSanitizer.js'
 
 import { unique, sortBy } from '../utils/data.js'
 
@@ -44,8 +45,7 @@ export const extractBaseUri = (content) => {
  * @returns {string|null} Decoded path or null
  */
 export const uriToPath = (uri) => {
-	const match = uri.match(REGEX_PATTERNS.URI_TO_PATH)
-	return match ? decodeURIComponent(match[1]) : null
+	return decodePath(uri)
 }
 
 /**
@@ -77,10 +77,7 @@ export const emailToPath = (email) => {
  * @returns {Function} Function accepting path
  */
 export const buildFullUri = (baseUri) => (path) => {
-	const encodedPath = path.split(PATH_SEPARATOR)
-		.map(encodeURIComponent)
-		.join(PATH_SEPARATOR)
-	return `${baseUri}${PATH_SEPARATOR}${encodedPath}`
+	return `${baseUri}${PATH_SEPARATOR}${encodePath(path)}`
 }
 
 // ============================================================================
@@ -163,16 +160,15 @@ export const parse = (content) => {
  * @returns {number} Calculated bitmask
  */
 export const calculateType = (options) => {
-	let value = 0
-	
-	if (options.newMail) value += FILTER_TYPES.NEW_MAIL
-	if (options.manual) value += FILTER_TYPES.MANUAL
-	if (options.afterSending) value += FILTER_TYPES.SENDING
-	if (options.archiving) value += FILTER_TYPES.ARCHIVE
-	if (options.periodic) value += FILTER_TYPES.PERIODIC
-	
-	// Default to 17 (Manual + New Mail) if nothing selected
-	return value === 0 ? DEFAULT_FILTER_TYPE : value
+	if (!Array.isArray(options)) {
+		return DEFAULT_FILTER_TYPE
+	}
+
+	const sum = options
+		.filter(filter => filter.enabled)
+		.reduce((acc, filter) => acc + filter.value, 0)
+
+	return sum === 0 ? DEFAULT_FILTER_TYPE : sum
 }
 
 // ============================================================================

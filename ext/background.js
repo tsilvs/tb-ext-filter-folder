@@ -3,7 +3,7 @@
  * Handles message routing and long-running operations
  */
 import { RuleEngine, getUniquePaths } from './modules/RuleEngine.js'
-import { MailClient, findInboxFolder, sortPathsByDepth } from './modules/MailClient.js'
+import { MailClient, sortPathsByDepth } from './modules/MailClient.js'
 import {
 	MESSAGE_ACTIONS,
 	MESSAGE_TYPES,
@@ -47,21 +47,28 @@ const isMissingPath = (existingSets, mergeCase, path) => {
 async function analyze(data) {
 	// Get existing folders
 	const { folders } = await MailClient.scanAccount(data.accountId)
-	const existingSets = buildExistingSets(folders)
+	const rootPath = (data.rootPath || '').replace(/\/+$/, '')
+	const scopedFolders = rootPath
+		? folders.filter(folder => folder.cleanPath === rootPath || folder.cleanPath.startsWith(`${rootPath}/`))
+		: folders
+	const existingSets = buildExistingSets(scopedFolders)
 
 	// Parse required folders from rules
 	const rules = RuleEngine.parse(data.filterContent)
 	const requiredPaths = getUniquePaths(rules)
+	const scopedRequiredPaths = rootPath
+		? requiredPaths.filter(path => path === rootPath || path.startsWith(`${rootPath}/`))
+		: requiredPaths
 
 	// Find missing paths
-	const missing = requiredPaths.filter(path =>
+	const missing = scopedRequiredPaths.filter(path =>
 		isMissingPath(existingSets, data.mergeCase, path)
 	)
 
 	return {
 		accountId: data.accountId,
 		totalRules: rules.length,
-		totalLeafs: requiredPaths.length,
+		totalLeafs: scopedRequiredPaths.length,
 		missing
 	}
 }
@@ -79,6 +86,19 @@ async function scanMessages(data) {
 	const folder = await messenger.folders.get(String(data.folderId))
 	const account = await messenger.accounts.get(folder.accountId)
 	return MailClient.getSenders(data.folderId, data.limit, account.identities)
+}
+
+/**
+ * Scan a specific folder for sender emails
+ * @param {Object} data - Scan data
+ * @returns {Promise<Object>} Object with folderId and senders
+ */
+async function scanFolderSenders(data) {
+	const folderId = String(data.folderId)
+	const folder = await messenger.folders.get(folderId)
+	const account = await messenger.accounts.get(folder.accountId)
+	const senders = await MailClient.getSenders(folderId, data.limit, account.identities)
+	return { folderId, senders }
 }
 
 // ============================================================================
@@ -122,8 +142,16 @@ const sendFolderComplete = (port, path) => {
  * @returns {string} Parent folder ID
  * @throws {Error} If parent not found
  */
-const getParentId = (folderMap, inbox, pathParts, index) => {
-	if (index === 0) return inbox.id
+const resolveRoot = (folders, accountId, preferredRoot) => {
+	if (preferredRoot) {
+		const match = folders.find(folder => folder.cleanPath.toLowerCase() === preferredRoot.toLowerCase())
+		if (match) return match
+	}
+	return folders[0] || null
+}
+
+const getParentId = (folderMap, rootFolder, pathParts, index) => {
+	if (index === 0) return rootFolder.id
 	
 	const parentPath = pathParts.slice(0, index).join('/').toLowerCase()
 	if (!folderMap.has(parentPath)) {
@@ -158,7 +186,7 @@ const createAndCache = async (folderMap, parentId, name) => {
  * @param {string} path - Path to create
  * @returns {Promise<void>}
  */
-const processPath = async (folderMap, inbox, path) => {
+const processPath = async (folderMap, rootFolder, path) => {
 	const parts = path.split('/')
 	
 	for (let j = 0; j < parts.length; j++) {
@@ -167,7 +195,7 @@ const processPath = async (folderMap, inbox, path) => {
 		
 		if (folderMap.has(normalized)) continue
 		
-		const parentId = getParentId(folderMap, inbox, parts, j)
+		const parentId = getParentId(folderMap, rootFolder, parts, j)
 		await createAndCache(folderMap, parentId, parts[j])
 	}
 }
@@ -193,7 +221,7 @@ const handleCreationError = (error, path, results) => {
  * @returns {Promise<Object>} Creation results
  */
 async function createFolders(data, port) {
-	const { accountId, paths } = data
+	const { accountId, paths, preferredRoot } = data
 	const results = { created: [], failed: [] }
 	
 	// Sort by depth to ensure parents exist
@@ -203,9 +231,8 @@ async function createFolders(data, port) {
 	const { folders } = await MailClient.scanAccount(accountId)
 	const folderMap = new Map(folders.map(f => [f.cleanPath.toLowerCase(), f]))
 	
-	// Find inbox
-	const inbox = findInboxFolder(folders)
-	if (!inbox) throw new Error(ERROR_MESSAGES.NO_INBOX)
+	const rootFolder = resolveRoot(folders, accountId, preferredRoot)
+	if (!rootFolder) throw new Error(ERROR_MESSAGES.NO_INBOX)
 
 	// Process each path
 	for (let i = 0; i < sortedPaths.length; i++) {
@@ -213,7 +240,7 @@ async function createFolders(data, port) {
 		sendProgress(port, i + 1, sortedPaths.length, path)
 		
 		try {
-			await processPath(folderMap, inbox, path)
+			await processPath(folderMap, rootFolder, path)
 			results.created.push(path)
 			sendFolderComplete(port, path)
 		} catch (e) {
@@ -233,22 +260,26 @@ async function createFolders(data, port) {
  */
 const MESSAGE_ROUTES = {
 	[MESSAGE_ACTIONS.ANALYZE]: analyze,
-	[MESSAGE_ACTIONS.SCAN_MESSAGES]: scanMessages
+	[MESSAGE_ACTIONS.SCAN_MESSAGES]: scanMessages,
+	[MESSAGE_ACTIONS.SCAN_FOLDER_SENDERS]: scanFolderSenders
 }
 
 /**
  * Handle runtime message
  * @param {Object} msg - Message object
- * @param {Function} sendResponse - Response callback
+ * @returns {Promise<Object>} Standardized response
  */
-const handleMessage = (msg, sendResponse) => {
+const handleMessage = async (msg) => {
 	const route = MESSAGE_ROUTES[msg.action]
-	
-	if (route) {
-		route(msg)
-			.then(sendResponse)
-			.catch(e => sendResponse({ error: e.message }))
-		return true
+	if (!route) {
+		return { ok: false, error: `Unknown action: ${msg.action || 'unknown'}` }
+	}
+
+	try {
+		const data = await route(msg)
+		return { ok: true, data }
+	} catch (e) {
+		return { ok: false, error: e?.message || 'Unexpected error' }
 	}
 }
 

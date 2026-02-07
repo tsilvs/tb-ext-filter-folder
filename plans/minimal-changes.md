@@ -171,7 +171,7 @@ BASE_URI: /actionValue="((?:imap|mailbox):\/\/[^/]+)\//,
 
 Create centralized encoding/validation service ([`ext/utils/pathSanitizer.js`](../../ext/utils/pathSanitizer.js)) with three responsibilities:
 
-**1. Detection**
+#### 1. Detection
 
 ```javascript
 function analyzePathIssues(path) {
@@ -194,7 +194,7 @@ function analyzePathIssues(path) {
 }
 ```
 
-**2. Encoding/Decoding**
+#### 2. Encoding/Decoding
 
 ```javascript
 // Centralize encoding logic from RuleEngine.js:80
@@ -208,7 +208,7 @@ function decodePath(uri) {
 }
 ```
 
-**3. Warnings**
+#### 3. Warnings
 
 ```javascript
 function generateWarnings(pathIssues) {
@@ -224,7 +224,7 @@ function generateWarnings(pathIssues) {
 }
 ```
 
-**Integration:**
+#### Integration
 
 - Add validation in [`ui.js`](../../ext/ui.js) before folder creation
 - Show warning dialog with detected issues + "Continue Anyway" option
@@ -414,28 +414,6 @@ export const getSenders = (api) => async (folderId, limit, selfIdentities = []) 
 
 ---
 
-## Implementation Strategy
-
-### Phase 1: Foundation (Must-Have)
-
-1. **Storage Service Layer** - Prevents data loss
-2. **Root Path Strategy** - Correct folder placement
-
-### Phase 2: Correctness (Must-Have)
-
-3. **URI Parser Enhancement** - Quick regex fix
-2. **Filter Config Schema** - Correct filter types
-
-### Phase 3: Data Integrity (Recommended)
-
-5. **Path Sanitizer Service** - User warnings + centralized encoding
-
-### Phase 4: Optimization (Optional)
-
-6. **Message Pagination** - Performance improvement
-
----
-
 ## Excluded from Minimal Set
 
 The following issues are **not addressed** by this minimal change set:
@@ -456,14 +434,14 @@ The following issues are **not addressed** by this minimal change set:
 
 ## Impact Summary
 
-| Change | Issues Fixed | Impact | Complexity | Priority |
-|--------|--------------|--------|------------|----------|
-| Storage Service | 1 (storage fallback) | HIGH | LOW | Must-Have |
-| Root Path Strategy | 1 (inbox anchoring) | HIGH | LOW | Must-Have |
-| URI Parser | 2 (action types, schemes) | MEDIUM | LOW | Must-Have |
-| Path Sanitizer | 2 (special chars, encoding) | HIGH | MEDIUM | Recommended |
-| Filter Schema | 1 (filter types) | HIGH | MEDIUM | Must-Have |
-| Pagination | 1 (scan limit) | MEDIUM | MEDIUM | Optional |
+| Change             | Issues Fixed                | Impact | Complexity | Priority    |
+|--------------------|-----------------------------|--------|------------|-------------|
+| Storage Service    | 1 (storage fallback)        | HIGH   | LOW        | Must-Have   |
+| Root Path Strategy | 1 (inbox anchoring)         | HIGH   | LOW        | Must-Have   |
+| URI Parser         | 2 (action types, schemes)   | MEDIUM | LOW        | Must-Have   |
+| Path Sanitizer     | 2 (special chars, encoding) | HIGH   | MEDIUM     | Recommended |
+| Filter Schema      | 1 (filter types)            | HIGH   | MEDIUM     | Must-Have   |
+| Pagination         | 1 (scan limit)              | MEDIUM | MEDIUM     | Optional    |
 
 **Total Issues Fixed:** 8 of 9 major issue categories (~89%)
 
@@ -517,14 +495,3 @@ The following issues are **not addressed** by this minimal change set:
 - Test with Local Folders (mailbox:// URIs)
 - Test with paths containing special characters
 - Verify filter import/export preserves types
-
----
-
-## Success Metrics
-
-✅ **Zero data loss** when sync storage is unavailable  
-✅ **User control** over folder creation root  
-✅ **100% URI scheme coverage** (imap + mailbox)  
-✅ **User awareness** of path encoding issues  
-✅ **Correct filter types** matching Thunderbird spec  
-✅ **Backward compatible** with existing configurations

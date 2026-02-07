@@ -35,10 +35,27 @@
 			<!-- Shared Config -->
 			<section class="card shared-config">
 				<label for="account"
-							 data-i18n="imapAccount"></label>
+						 data-i18n="imapAccount"></label>
 				<select id="account">
 					<option data-i18n="loadingAccounts">Loading...</option>
 				</select>
+
+				<label data-i18n="scanSourceLabel"></label>
+				<div class="input-group">
+					<input type="search" id="scanSourceSearch" placeholder="Search folders">
+					<select id="scanSource"></select>
+				</div>
+				<small class="hint">Folder used as the source inbox for analysis/discovery.</small>
+
+				<label data-i18n="targetRootLabel"></label>
+				<div class="input-group">
+					<input type="search" id="targetRootSearch" placeholder="Search folders">
+					<select id="targetRoot"></select>
+					<button type="button"
+								id="btnInfer"
+								data-i18n="inferRootBtn"></button>
+				</div>
+				<small class="hint" data-i18n="targetRootHint"></small>
 
 				<label for="fileInput"
 							 data-i18n="uploadFile"></label>
@@ -130,24 +147,27 @@
 											 data-i18n="mergeCaseLabel"></label>
 							</div>
 
-							<div class="actions">
+				<div class="actions">
 
-								<button type="submit"
-												id="btnAnalyze"
-												disabled
-												data-i18n="analyzeMissing"></button>
-								<aside class="status-area"
-											 id="statusFolders"></aside>
-							</div>
+						<button type="submit"
+									id="btnAnalyze"
+									disabled
+									data-i18n="analyzeMissing"></button>
+						<button type="button"
+									id="btnLeafDebug"
+									class="secondary">Leaf Debug</button>
+						<aside class="status-area"
+								 id="statusFolders"></aside>
+					</div>
 						</form>
 					</section>
 
-					<section id="analysisResults"
-									 class="card">
-						<h2 data-i18n="resultsHeader">Results</h2>
+				<section id="analysisResults"
+							 class="card">
+					<h2 data-i18n="resultsHeader">Results</h2>
 
-						<div class="stats">
-							<aside class="stat">
+					<div class="stats">
+						<aside class="stat">
 
 								<div class="stat-label"
 										 data-i18n="uniqueLeafs"></div>
@@ -161,7 +181,63 @@
 								<output class="stat-value"
 												id="resMissing">—</output>
 							</aside>
-						</div>
+					</div>
+					<div id="leafEmailMismatch"
+							 class="status warning"
+							 style="display: none; margin-top: 8px;"></div>
+
+					<div class="stats" style="margin-top: 12px;">
+						<aside class="stat">
+							<div class="stat-label">Missing Rules (Inbox)</div>
+							<output class="stat-value" id="countMissingInbox">—</output>
+							<button id="btnGenMissingInbox" class="secondary" disabled>Generate Rules</button>
+						</aside>
+						<aside class="stat">
+							<div class="stat-label">Missing Rules (Valid Folders)</div>
+							<output class="stat-value" id="countMissingLeafRules">—</output>
+							<button id="btnGenMissingLeaf" class="secondary" disabled>Generate Rules</button>
+						</aside>
+						<aside class="stat">
+							<div class="stat-label">Mismatched Folders</div>
+							<output class="stat-value" id="countMismatchedFolders">—</output>
+							<button id="btnGenMismatched" class="secondary" disabled>Generate Rules</button>
+						</aside>
+						<aside class="stat">
+							<div class="stat-label">Rules to Missing Folders</div>
+							<output class="stat-value" id="countRulesMissingFolders">—</output>
+							<button id="btnCreateRuleFolders" class="secondary" disabled>Create Folders</button>
+						</aside>
+						<aside class="stat">
+							<div class="stat-label">Empty Leaf Folders</div>
+							<output class="stat-value" id="countEmptyLeafFolders">—</output>
+							<button id="btnDeleteEmptyFolders" class="secondary" disabled>Delete Empty</button>
+						</aside>
+					</div>
+
+					<details id="missingInboxDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Missing Rules (Inbox)</summary>
+						<div id="listMissingInbox" class="folder-list"></div>
+					</details>
+					<details id="missingLeafDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Missing Rules (Valid Folders)</summary>
+						<div id="listMissingLeafRules" class="folder-list"></div>
+					</details>
+					<details id="mismatchedDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Mismatched Folders</summary>
+						<div id="listMismatchedFolders" class="folder-list"></div>
+					</details>
+					<details id="rulesMissingDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Rules Pointing to Missing Folders</summary>
+						<div id="listRulesMissingFolders" class="folder-list"></div>
+					</details>
+					<details id="emptyFoldersDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Empty Leaf Folders</summary>
+						<div id="listEmptyLeafFolders" class="folder-list"></div>
+					</details>
+					<details id="analysisRulesDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Generated Rules</summary>
+						<textarea id="analysisRulesOut" readonly style="min-height: 160px;"></textarea>
+					</details>
 
 						<div id="missingList"
 								 class="folder-list empty-state">
@@ -170,13 +246,21 @@
 										data-i18n="analyzeToSeeFolders"></span>
 						</div>
 
-						<div class="actions">
+					<div class="actions">
 
-							<button id="btnCreateMissing"
-											disabled
-											data-i18n="createMissingFoldersBtn"></button>
-						</div>
-					</section>
+						<button id="btnCreateMissing"
+									disabled
+									data-i18n="createMissingFoldersBtn"></button>
+					</div>
+					<details id="analysisReport" class="hidden" style="margin-top: 12px;">
+						<summary>Analysis Report</summary>
+						<pre id="analysisReportContent" style="white-space: pre-wrap;"></pre>
+					</details>
+					<details id="leafDebugPanel" class="hidden" style="margin-top: 12px;">
+						<summary>Leaf Debug Report</summary>
+						<pre id="leafDebugReport" style="white-space: pre-wrap;"></pre>
+					</details>
+				</section>
 				</div>
 
 				<!-- Tab 2: Discovery -->
@@ -187,25 +271,12 @@
 						<form id="formDiscovery">
 							<section class="instruction"
 											 data-i18n="discoveryInstructions"></section>
-							<label data-i18n="scanSourceLabel"></label>
-							<select id="scanSource">
-								<option data-i18n="loadingFolders"></option>
-							</select>
+						<label data-i18n="scanSourceLabel"></label>
+						<select id="scanSourceLegacy" class="hidden">
+							<option data-i18n="loadingFolders"></option>
+						</select>
 
-							<label data-i18n="targetRootLabel"></label>
-
-							<div class="input-group">
-								<input type="text"
-											 id="targetRoot">
-
-								<button type="button"
-												id="btnInfer"
-												data-i18n="inferRootBtn"></button>
-							</div>
-							<small class="hint"
-										 data-i18n="targetRootHint"></small>
-
-							<div class="actions">
+						<div class="actions">
 
 								<button type="submit"
 												id="btnScan"

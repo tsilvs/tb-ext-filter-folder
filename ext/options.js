@@ -2,8 +2,9 @@
  * Options Page
  * Handles user preferences and settings
  */
-import { DEFAULT_CONFIG, UI_TIMEOUTS, STORAGE_AREAS } from './config/constants.js'
-import { getElementById, setChecked, setValue } from './utils/dom.js'
+import { DEFAULT_CONFIG, DEFAULT_FILTER_CONFIG, UI_TIMEOUTS } from './config/constants.js'
+import { createElement, getElementById, setChecked, setValue } from './utils/dom.js'
+import * as storage from './utils/storage.js'
 
 // Use 'browser' namespace which is standard for WebExtensions
 const browserApi = (typeof browser !== 'undefined') ? browser : messenger;
@@ -27,13 +28,57 @@ const applyConfigToUI = (config) => {
 	setChecked('mergeCase', config.mergeCase)
 	setValue('scanLimit', config.scanLimit)
 	setValue('defaultRoot', config.defaultRoot)
-	
-	// Filter Triggers
-	setChecked('optManual', config.filterManual)
-	setChecked('optNewMail', config.filterNewMail)
-	setChecked('optSending', config.filterSending)
-	setChecked('optArchive', config.filterArchive)
-	setChecked('optPeriodic', config.filterPeriodic)
+
+	const folderRootSelect = getElementById('folderRoot')
+	const customFolderRoot = getElementById('customFolderRoot')
+	if (folderRootSelect && customFolderRoot) {
+		const selected = config.folderRoot || ''
+		if (selected && selected !== 'Inbox') {
+			folderRootSelect.value = 'custom'
+			customFolderRoot.value = selected
+			customFolderRoot.style.display = 'block'
+		} else {
+			folderRootSelect.value = selected
+			customFolderRoot.value = ''
+			customFolderRoot.style.display = 'none'
+		}
+	}
+
+	const filters = Array.isArray(config.filters) ? config.filters : DEFAULT_FILTER_CONFIG
+	filters.forEach(filter => {
+		setChecked(filter.label, !!filter.enabled)
+	})
+}
+
+const renderFilterTriggers = (filters = DEFAULT_FILTER_CONFIG) => {
+	const container = getElementById('filterTriggerList')
+	if (!container) return
+	container.innerHTML = ''
+
+	const labelMap = {
+		optPreJunk: 'Getting New Mail (Before Junk)',
+		optManual: 'Manually Run',
+		optPostJunk: 'Getting New Mail (After Junk)',
+		optSending: 'After Sending',
+		optArchive: 'Archiving',
+		optPeriodic: 'Periodically (10m)'
+	}
+
+	filters.forEach(filter => {
+		const group = createElement('div', { className: 'checkbox-group' })
+		const checkbox = createElement('input', {
+			type: 'checkbox',
+			id: filter.label
+		})
+		const label = createElement('label', {
+			for: filter.label,
+			className: 'inline',
+			textContent: labelMap[filter.label] || filter.id
+		})
+		group.appendChild(checkbox)
+		group.appendChild(label)
+		container.appendChild(group)
+	})
 }
 
 /**
@@ -41,7 +86,8 @@ const applyConfigToUI = (config) => {
  */
 async function restoreOptions() {
 	try {
-		const result = await browserApi.storage.sync.get(DEFAULT_CONFIG)
+		const result = await storage.get(DEFAULT_CONFIG)
+		renderFilterTriggers(result.filters)
 		applyConfigToUI(result)
 	} catch (e) {
 		console.error('Failed to restore options:', e)
@@ -52,17 +98,25 @@ async function restoreOptions() {
  * Collect preferences from UI
  * @returns {Object} Preferences object
  */
-const collectPreferences = () => ({
-	mergeCase: getElementById('mergeCase').checked,
-	scanLimit: parseInt(getElementById('scanLimit').value, 10),
-	defaultRoot: getElementById('defaultRoot').value.trim(),
-	
-	filterManual: getElementById('optManual').checked,
-	filterNewMail: getElementById('optNewMail').checked,
-	filterSending: getElementById('optSending').checked,
-	filterArchive: getElementById('optArchive').checked,
-	filterPeriodic: getElementById('optPeriodic').checked
-})
+const collectPreferences = () => {
+	const folderRootSelect = getElementById('folderRoot')
+	const customFolderRoot = getElementById('customFolderRoot')
+
+	const folderRootValue = folderRootSelect?.value === 'custom'
+		? (customFolderRoot?.value || '').trim()
+		: (folderRootSelect?.value || '').trim()
+
+	return {
+		mergeCase: getElementById('mergeCase').checked,
+		scanLimit: parseInt(getElementById('scanLimit').value, 10),
+		defaultRoot: getElementById('defaultRoot').value.trim(),
+		folderRoot: folderRootValue,
+		filters: DEFAULT_FILTER_CONFIG.map(filter => ({
+			...filter,
+			enabled: getElementById(filter.label)?.checked || false
+		}))
+	}
+}
 
 /**
  * Show toast notification
@@ -90,7 +144,7 @@ async function saveOptions(e) {
 	const toast = getToast()
 
 	try {
-		await browserApi.storage.sync.set(prefs)
+		await storage.set(prefs)
 		showToast(toast, 'Settings Saved')
 	} catch (e) {
 		console.error(e)
@@ -106,6 +160,15 @@ async function saveOptions(e) {
  * Initialize options page
  */
 const initializeOptions = () => {
+	const folderRootSelect = getElementById('folderRoot')
+	const customFolderRoot = getElementById('customFolderRoot')
+	if (folderRootSelect && customFolderRoot) {
+		folderRootSelect.addEventListener('change', () => {
+			const isCustom = folderRootSelect.value === 'custom'
+			customFolderRoot.style.display = isCustom ? 'block' : 'none'
+		})
+	}
+
 	restoreOptions()
 	
 	const form = getForm()

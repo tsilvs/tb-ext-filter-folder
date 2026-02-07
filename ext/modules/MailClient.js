@@ -143,6 +143,57 @@ export const scanAccount = (api) => async (accountId) => {
 }
 
 /**
+ * Resolve a root folder by cleanPath
+ * @param {Array} folders - Array of folder objects
+ * @param {string} rootPath - Clean path to match
+ * @returns {Object|null} Root folder
+ */
+export const resolveRootFolder = (folders, rootPath) => {
+	if (!rootPath) return null
+	return folders.find(folder => folder.cleanPath.toLowerCase() === rootPath.toLowerCase()) || null
+}
+
+/**
+ * Compute folder stats scoped to a root path
+ * @param {Array} folders - Array of folder objects
+ * @param {string} rootPath - Root clean path
+ * @returns {Object} Stats { total, leafs, leafPaths }
+ */
+export const computeFolderStats = (folders, rootPath = '') => {
+	const normalizedRoot = rootPath.replace(/\/+$/, '')
+	const rootPrefix = normalizedRoot ? `${normalizedRoot}/` : ''
+
+	const scoped = normalizedRoot
+		? folders.filter(folder => folder.cleanPath === normalizedRoot || folder.cleanPath.startsWith(rootPrefix))
+		: folders
+
+	const scopedSet = new Set(scoped.map(folder => folder.cleanPath.toLowerCase()))
+	const childrenMap = new Map()
+
+	scoped.forEach(folder => {
+		const parts = folder.cleanPath.split('/')
+		if (parts.length > 1) {
+			const parentPath = parts.slice(0, -1).join('/').toLowerCase()
+			if (scopedSet.has(parentPath)) {
+				const list = childrenMap.get(parentPath) || []
+				list.push(folder.cleanPath)
+				childrenMap.set(parentPath, list)
+			}
+		}
+	})
+
+	const leafPaths = scoped
+		.filter(folder => !childrenMap.has(folder.cleanPath.toLowerCase()))
+		.map(folder => folder.cleanPath)
+
+	return {
+		total: scoped.length,
+		leafs: leafPaths.length,
+		leafPaths
+	}
+}
+
+/**
  * Create a folder
  * @param {Object} api - Messenger API object
  * @returns {Function} Function accepting (parentId, name)
@@ -200,22 +251,33 @@ const shouldExcludeEmail = (selfEmails, email) => {
  */
 export const getSenders = (api) => async (folderId, limit, selfIdentities = []) => {
 	const messageLimit = limit || LIMITS.DEFAULT_SCAN_LIMIT
-	
-	const messages = await api.messages.list(String(folderId))
-	const list = (messages.messages || []).slice(0, messageLimit)
-	
 	const selfEmails = toSet(
 		selfIdentities.map(i => (i.email || '').toLowerCase())
 	)
 	const senders = new Set()
-	
-	for (const msg of list) {
-		const email = extractEmail(msg.author)
-		if (!shouldExcludeEmail(selfEmails, email)) {
-			senders.add(email)
+
+	let page = await api.messages.list(String(folderId))
+	let collected = 0
+
+	while (page && collected < messageLimit) {
+		const batch = page.messages || []
+		for (const msg of batch) {
+			if (collected >= messageLimit) break
+
+			const email = extractEmail(msg.author)
+			if (!shouldExcludeEmail(selfEmails, email)) {
+				senders.add(email)
+			}
+			collected++
+		}
+
+		if (page.id && collected < messageLimit) {
+			page = await api.messages.continueList(page.id)
+		} else {
+			break
 		}
 	}
-	
+
 	return fromSet(senders)
 }
 
@@ -281,6 +343,8 @@ export const MailClient = {
 	getAccount: getAccount(messenger),
 	listImapAccounts: () => listImapAccounts(messenger),
 	findInboxFolder,
+	resolveRootFolder,
+	computeFolderStats,
 	buildFolderMap,
 	sortPathsByDepth,
 	getParentPath,

@@ -1,9 +1,9 @@
-> [!IMPORTANT]
-> Made with Claude Sonnet 4.5 and Gemini 3
->
-> I plan rewriting it manually later.
-
 # Filter Folder Creator
+
+> [!IMPORTANT]
+> Made with ChatFPT 5.2, Claude Sonnet 4.5 and Gemini 3
+>
+> I plan to rewrite it manually later.
 
 ## Purpose
 
@@ -67,13 +67,13 @@ Install XPI:
 ## Troubleshooting
 
 - **No accounts showing**: Extension only works with IMAP accounts
-- **Parse errors**: Ensure msgFilterRules.dat is from the selected account
+- **Parse errors**: Ensure `msgFilterRules.dat` is from the selected account
 - **Creation fails**: Check folder permissions and IMAP server connectivity
 - **View logs**: Tools `->` Developer Tools `->` Error Console
 
-## Example msgFilterRules.dat Entry
+## Example `msgFilterRules.dat` Entry
 
-```
+```ini
 name="Move to Project"
 enabled="yes"
 type="17"
