@@ -5,7 +5,8 @@
 
 import { REGEX_PATTERNS, PATH_SEPARATOR } from '../config/constants.js'
 
-export const analyzePathIssues = (path, existingPaths = []) => {
+export const analyzePathIssues = (path, existingPaths = [], options = {}) => {
+	const { checkEncoding = true } = options
 	const issues = []
 
 	if (/[<>:"|?*\\]/.test(path)) {
@@ -15,7 +16,7 @@ export const analyzePathIssues = (path, existingPaths = []) => {
 		})
 	}
 
-	if (path !== encodeURIComponent(path)) {
+	if (checkEncoding && path !== encodePath(path)) {
 		issues.push({ type: 'needs-encoding', original: path })
 	}
 

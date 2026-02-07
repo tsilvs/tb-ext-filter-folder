@@ -494,10 +494,10 @@ const saveAccountPreferences = async () => {
 	}
 }
 
-const collectPathWarnings = (paths) => {
+const collectPathWarnings = (paths, options = {}) => {
 	const existingPaths = state.folders.map(folder => folder.cleanPath)
 	return paths.flatMap((path) => {
-		const issues = analyzePathIssues(path, existingPaths)
+		const issues = analyzePathIssues(path, existingPaths, options)
 		return generateWarnings(issues, path)
 	})
 }
@@ -1037,13 +1037,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const btnCreateMissing = $('btnCreateMissing')
 	if (btnCreateMissing) btnCreateMissing.onclick = async () => {
 		await withButtonBusy(btnCreateMissing, async () => {
-			const warnings = collectPathWarnings(state.missing)
+			const warnings = collectPathWarnings(state.missing, { checkEncoding: false })
 			if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
 			if (!state.missing || state.missing.length === 0) {
-				setStatus('statusFolders', 'No folders to create.', 'info')
+				setStatus('statusCreateMissing', 'No folders to create.', 'info')
 				return
 			}
-			await runCreate(state.missing, 'statusFolders', btnCreateMissing)
+			await runCreate(state.missing, 'statusCreateMissing', btnCreateMissing)
 			await $('btnAnalyze')?.click()
 		})
 	}
@@ -1051,13 +1051,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const btnCreateMissingInline = $('btnCreateMissingInline')
 	if (btnCreateMissingInline) btnCreateMissingInline.onclick = async () => {
 		await withButtonBusy(btnCreateMissingInline, async () => {
-			const warnings = collectPathWarnings(state.missing)
+			const warnings = collectPathWarnings(state.missing, { checkEncoding: false })
 			if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
 			if (!state.missing || state.missing.length === 0) {
-				setStatus('statusFolders', 'No folders to create.', 'info')
+				setStatus('statusCreateMissing', 'No folders to create.', 'info')
 				return
 			}
-			await runCreate(state.missing, 'statusFolders', btnCreateMissingInline)
+			await runCreate(state.missing, 'statusCreateMissing', btnCreateMissingInline)
 			await $('btnAnalyze')?.click()
 		})
 	}
@@ -1248,7 +1248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const btnCreateDiscovered = $('btnCreateDiscovered')
 	if (btnCreateDiscovered) btnCreateDiscovered.onclick = async () => {
 		const paths = state.discovered.filter(i => i.selected).map(i => i.path)
-		const warnings = collectPathWarnings(paths)
+		const warnings = collectPathWarnings(paths, { checkEncoding: false })
 		if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
 		if (paths.length === 0) {
 			setStatus('statusDiscovery', 'No folders selected to create.', 'info')
