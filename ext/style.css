@@ -476,6 +476,57 @@ label.inline {
 	background: #e6f4ea;
 }
 
+.pseudo-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	margin-left: 6px;
+	border-radius: 50%;
+	border: 1px solid #cbd5e1;
+	color: #64748b;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+	cursor: help;
+	background: #fff;
+}
+
+#currentRules.is-dirty {
+	border-color: #f59e0b;
+	box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.process-header {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.process-spinner {
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	border: 2px solid #e2e8f0;
+	border-top-color: #2563eb;
+	animation: spin 0.8s linear infinite;
+	opacity: 0;
+}
+
+.is-processing .process-spinner {
+	opacity: 1;
+}
+
+#contentDiscovery.is-processing .process-spinner {
+	opacity: 1;
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
 .discovery-item input[type="checkbox"] {
 	margin: 0;
 	width: 16px;
@@ -497,27 +548,6 @@ label.inline {
 .discovery-item.exists .path {
 	text-decoration: line-through;
 	color: #9aa0a6;
-}
-
-/* Generated Rules */
-#generatedRulesArea {
-	border-top: 4px solid #1a73e8;
-}
-
-#generatedRulesArea.hidden {
-	display: none;
-}
-
-#generatedRulesOutput {
-	height: 150px;
-	background: #2b2b2b;
-	color: #f1f3f4;
-	padding: 16px;
-	border: 1px solid #5f6368;
-	border-radius: 4px;
-	margin-top: 12px;
-	font-size: 13px;
-	line-height: 1.4;
 }
 
 .folder-list {

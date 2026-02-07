@@ -48,8 +48,6 @@
 	"btnGenerateRulesOnly": { "message": "Generate Rules Text" },
 	"downloadCombined": { "message": "Download Combined Rules" },
 
-	"generatedRulesHeader": { "message": "Generated Rules" },
-	"generatedRulesHint": { "message": "Copy and append this block to the end of your msgFilterRules.dat file:" },
 	"noNewSenders": { "message": "No new senders found without rules." },
 	"rootInferred": { "message": "Inferred root: $PATH$" },
 	"rootNotFound": { "message": "Could not infer root from rules." },
@@ -67,9 +65,10 @@
 	"selectAccount": { "message": "Select an account" },
 	"uploadOrPaste": { "message": "Provide filter rules" },
 	"uniqueLeafs": { "message": "Leaf Paths" },
-	"missing": { "message": "Missing" },
+	"missingFolders": { "message": "Missing folders" },
 	"settingsTitle": { "message": "Settings" },
 	"sortRulesBtn": { "message": "Sort Rules" },
 	"applyDefaultsBtn": { "message": "Apply Defaults" },
-	"sortCombinedLabel": { "message": "Sort rules by folder path before downloading" }
+	"sortCombinedLabel": { "message": "Sort rules by folder path before downloading" },
+	"downloadRules": { "message": "Download rules" }
 }

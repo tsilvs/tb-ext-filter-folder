@@ -50,3 +50,72 @@
 	height: var(--settings-frame-height);
 	border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
+
+.warnings-dialog {
+	border: none;
+	padding: 0;
+	background: transparent;
+	max-width: 90vw;
+	max-height: 90vh;
+}
+
+.warnings-dialog::backdrop {
+	background: rgba(0, 0, 0, 0.5);
+}
+
+.warnings-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+.warnings-panel {
+	position: relative;
+	background: var(--color-surface);
+	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-lg);
+	width: min(720px, 90vw);
+	max-height: 80vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	margin: 5vh auto;
+}
+
+.warnings-header {
+	padding: var(--spacing-md) var(--spacing-lg);
+	border-bottom: 1px solid var(--color-border-light);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.warnings-header h2 {
+	margin: 0;
+	font-size: var(--font-size-xl);
+}
+
+.warnings-body {
+	padding: var(--spacing-md) var(--spacing-lg);
+	overflow: auto;
+}
+
+.warnings-body pre {
+	white-space: pre-wrap;
+	background: var(--color-hover-bg);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: var(--spacing-md);
+	max-height: 40vh;
+	overflow: auto;
+}
+
+.warnings-actions {
+	padding: var(--spacing-md) var(--spacing-lg);
+	border-top: 1px solid var(--color-border-light);
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing-sm);
+}

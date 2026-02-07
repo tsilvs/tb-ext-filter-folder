@@ -63,9 +63,9 @@
 							 id="fileInput"
 							 accept=".dat,text/plain">
 
-				<textarea id="pasteInput"
-									class="collapsed"
-									data-i18n-placeholder="pastePlaceholder"></textarea>
+				<textarea id="currentRules"
+								class="collapsed"
+								data-i18n-placeholder="pastePlaceholder"></textarea>
 
 				<div class="meta-info">
 
@@ -114,7 +114,7 @@
 							<section class="instruction"
 											 data-i18n="instructions"></section>
 
-							<div class="stats">
+						<div class="stats">
 								<aside class="stat">
 
 									<div class="stat-label"
@@ -164,7 +164,7 @@
 
 				<section id="analysisResults"
 							 class="card">
-					<h2 data-i18n="resultsHeader">Results</h2>
+					<h2 data-i18n="resultsHeader" class="process-header">Results <span class="process-spinner" data-process="folders" aria-hidden="true"></span></h2>
 
 					<div class="stats">
 						<aside class="stat">
@@ -177,40 +177,63 @@
 							<aside class="stat">
 
 								<div class="stat-label"
-										 data-i18n="missing"></div>
+										 data-i18n="missingFolders"></div>
 								<output class="stat-value"
-												id="resMissing">—</output>
+											id="resMissing">—</output>
+								<button id="btnCreateMissingInline"
+											class="secondary"
+											disabled
+											data-busy-text="Creating folders..."
+											data-i18n="createMissingFoldersBtn"></button>
 							</aside>
-					</div>
+						</div>
+						<div class="actions" style="margin-top: 8px;">
+							<button id="btnDownloadRules"
+									class="secondary"
+									data-i18n="downloadRules"></button>
+						</div>
 					<div id="leafEmailMismatch"
 							 class="status warning"
 							 style="display: none; margin-top: 8px;"></div>
 
 					<div class="stats" style="margin-top: 12px;">
 						<aside class="stat">
-							<div class="stat-label">Missing Rules (Inbox)</div>
-							<output class="stat-value" id="countMissingInbox">—</output>
-							<button id="btnGenMissingInbox" class="secondary" disabled>Generate Rules</button>
+							<div class="stat-label">Missing Rules (Inbox)
+								<span class="pseudo-icon" title="Emails found in the selected source inbox that have no rule in msgFilterRules.dat to move them into the target tree.">?</span>
+							</div>
+								<output class="stat-value" id="countMissingInbox">—</output>
+								<button id="btnGenMissingInbox" class="secondary" disabled data-busy-text="Generating rules...">Generate Rules</button>
 						</aside>
 						<aside class="stat">
-							<div class="stat-label">Missing Rules (Valid Folders)</div>
-							<output class="stat-value" id="countMissingLeafRules">—</output>
-							<button id="btnGenMissingLeaf" class="secondary" disabled>Generate Rules</button>
+							<div class="stat-label">Missing Rules (Valid Folders)
+								<span class="pseudo-icon" title="Emails inferred from leaf folders inside the target tree that are valid but missing a corresponding rule in msgFilterRules.dat.">?</span>
+							</div>
+								<output class="stat-value" id="countMissingLeafRules">—</output>
+								<button id="btnGenMissingLeaf" class="secondary" disabled data-busy-text="Generating rules...">Generate Rules</button>
 						</aside>
 						<aside class="stat">
-							<div class="stat-label">Mismatched Folders</div>
-							<output class="stat-value" id="countMismatchedFolders">—</output>
-							<button id="btnGenMismatched" class="secondary" disabled>Generate Rules</button>
+							<div class="stat-label">Mismatched Folders
+								<span class="pseudo-icon" title="Emails with rules or folder contents that do not match the expected target path based on the current root and email-to-path logic.">?</span>
+							</div>
+								<output class="stat-value" id="countMismatchedFolders">—</output>
+								<button id="btnGenMismatched" class="secondary" disabled data-busy-text="Generating rules...">Generate Rules</button>
 						</aside>
 						<aside class="stat">
-							<div class="stat-label">Rules to Missing Folders</div>
-							<output class="stat-value" id="countRulesMissingFolders">—</output>
-							<button id="btnCreateRuleFolders" class="secondary" disabled>Create Folders</button>
+							<div class="stat-label">Empty Leaf Folders
+								<span class="pseudo-icon" title="Leaf folders under the target tree that contain no messages (no senders detected).">?</span>
+							</div>
+								<output class="stat-value" id="countEmptyLeafFolders">—</output>
+								<button id="btnDeleteEmptyFolders" class="secondary" disabled data-busy-text="Deleting empty folders...">Delete Empty</button>
+								<aside class="status-area inline" id="statusDeleteEmpty" aria-live="polite"></aside>
 						</aside>
+					</div>
+					<div class="stats" style="margin-top: 8px;">
 						<aside class="stat">
-							<div class="stat-label">Empty Leaf Folders</div>
-							<output class="stat-value" id="countEmptyLeafFolders">—</output>
-							<button id="btnDeleteEmptyFolders" class="secondary" disabled>Delete Empty</button>
+							<div class="stat-label">Invalid Rules
+								<span class="pseudo-icon" title="Rules that reference a target folder path that does not exist under the current root.">?</span>
+							</div>
+							<output class="stat-value" id="countInvalidRules">—</output>
+							<button id="btnDeleteInvalidRules" class="secondary" disabled data-busy-text="Deleting invalid rules...">Delete Invalid</button>
 						</aside>
 					</div>
 
@@ -226,32 +249,26 @@
 						<summary>Mismatched Folders</summary>
 						<div id="listMismatchedFolders" class="folder-list"></div>
 					</details>
-					<details id="rulesMissingDetails" class="hidden" style="margin-top: 12px;">
-						<summary>Rules Pointing to Missing Folders</summary>
-						<div id="listRulesMissingFolders" class="folder-list"></div>
-					</details>
 					<details id="emptyFoldersDetails" class="hidden" style="margin-top: 12px;">
 						<summary>Empty Leaf Folders</summary>
 						<div id="listEmptyLeafFolders" class="folder-list"></div>
 					</details>
-					<details id="analysisRulesDetails" class="hidden" style="margin-top: 12px;">
-						<summary>Generated Rules</summary>
-						<textarea id="analysisRulesOut" readonly style="min-height: 160px;"></textarea>
+					<details id="invalidRulesDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Invalid Rules</summary>
+						<div id="listInvalidRules" class="folder-list"></div>
 					</details>
-
-						<div id="missingList"
-								 class="folder-list empty-state">
-
-							<span class="hint"
-										data-i18n="analyzeToSeeFolders"></span>
+					<details id="missingFoldersDetails" class="hidden" style="margin-top: 12px;">
+						<summary>Missing Folders</summary>
+						<div id="missingList" class="folder-list empty-state">
+							<span class="hint" data-i18n="analyzeToSeeFolders"></span>
 						</div>
-
-					<div class="actions">
-
-						<button id="btnCreateMissing"
-									disabled
-									data-i18n="createMissingFoldersBtn"></button>
-					</div>
+						<div class="actions" style="margin-top: 8px;">
+								<button id="btnCreateMissing"
+											disabled
+											data-busy-text="Creating folders..."
+											data-i18n="createMissingFoldersBtn"></button>
+						</div>
+					</details>
 					<details id="analysisReport" class="hidden" style="margin-top: 12px;">
 						<summary>Analysis Report</summary>
 						<pre id="analysisReportContent" style="white-space: pre-wrap;"></pre>
@@ -278,10 +295,12 @@
 
 						<div class="actions">
 
-								<button type="submit"
-												id="btnScan"
-												class="primary"
-												data-i18n="scanAndDiscover"></button>
+						<button type="submit"
+									id="btnScan"
+									class="primary">
+							<span data-i18n="scanAndDiscover"></span>
+							<span class="process-spinner" aria-hidden="true"></span>
+						</button>
 								<aside class="status-area"
 											 id="statusDiscovery"></aside>
 							</div>
@@ -326,51 +345,6 @@
 						</div>
 					</section>
 
-					<section id="genRulesArea"
-									 class="card hidden">
-						<h3 data-i18n="generatedRulesHeader"></h3>
-
-						<div id="accountMismatchWarning"
-								 class="status warning"
-								 style="display: none; margin-bottom: 12px;">
-							<strong>⚠ Account Mismatch Detected</strong><br>
-							Selected Account: <code id="mismatchAccountUri"></code><br>
-							Rules Account: <code id="mismatchRulesUri"></code>
-						</div>
-
-						<fieldset id="ruleGenerationOptions">
-
-							<div class="checkbox-group">
-								<input type="checkbox"
-											 id="chkOverrideAccount"
-											 disabled
-											 title="Enable when account mismatch is detected">
-								<label for="chkOverrideAccount"
-											 class="inline">
-									Override with selected account URI
-								</label>
-							</div>
-						</fieldset>
-
-						<textarea id="genRulesOut"
-											readonly></textarea>
-
-						<div class="checkbox-group"
-								 style="margin: 0 0 12px 0;">
-							<input type="checkbox"
-										 id="chkSortDownload"
-										 checked>
-							<label for="chkSortDownload"
-										 class="inline"
-										 data-i18n="sortCombinedLabel"></label>
-						</div>
-
-						<div class="actions">
-
-							<button id="btnDownload"
-											data-i18n="downloadCombined"></button>
-						</div>
-					</section>
 				</div>
 			</div>
 		</main>
@@ -391,6 +365,24 @@
 								class="settings-frame"></iframe>
 			</div>
 		</div>
+
+		<dialog id="warningsDialog" class="warnings-dialog">
+			<div class="warnings-overlay" data-close="true"></div>
+			<div class="warnings-panel">
+				<header class="warnings-header">
+					<h2>Potential path issues</h2>
+					<button type="button" class="icon-button close" data-close="true">&times;</button>
+				</header>
+				<div class="warnings-body">
+					<p>Some folder paths may be URL-encoded or adjusted:</p>
+					<pre id="warningsList"></pre>
+				</div>
+				<footer class="warnings-actions">
+					<button type="button" id="warningsCancel" class="secondary">Cancel</button>
+					<button type="button" id="warningsConfirm" class="primary">Continue</button>
+				</footer>
+			</div>
+		</dialog>
 
 		<script type="module"
 						src="ui.js"></script>

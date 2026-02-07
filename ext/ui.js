@@ -5,13 +5,14 @@ import { RuleEngine } from './modules/RuleEngine.js'
 import { MailClient } from './modules/MailClient.js'
 import * as storage from './utils/storage.js'
 import { analyzePathIssues, generateWarnings } from './utils/pathSanitizer.js'
+import { createStore } from './utils/store.js'
 
 // Namespace compatibility
 const browserApi = (typeof browser !== 'undefined') ? browser : messenger;
 
 // --- State & DOM ---
 const $ = id => document.getElementById(id)
-const state = {
+const initialState = {
 	folders: [],              // Current account folder list
 	missing: [],              // Analyzed missing paths
 	discovered: [],           // Scanned emails {email, path, selected}
@@ -19,6 +20,12 @@ const state = {
 	currentAccount: null,     // Current account object with identities
 	accountBaseUri: null,     // imap://user@host from current account
 	analysis: null,
+	analysisMeta: null,
+	processing: {
+		folders: false,
+		discovery: false
+	},
+	rulesSnapshot: '',
 	config: {                 // Loaded from Storage
 		scanLimit: 500,
 		mergeCase: true,
@@ -29,11 +36,46 @@ const state = {
 		accountPreferences: {}
 	}
 }
+const store = createStore(initialState)
+const state = store.getState()
+
+store.subscribe((next, prev, meta) => {
+	if (next.processing !== prev.processing) {
+		renderProcessing(next.processing)
+	}
+	if (next.config !== prev.config) {
+		renderConfig(next.config)
+	}
+	if (next.rulesSnapshot !== prev.rulesSnapshot) {
+		renderRulesSnapshot(next.rulesSnapshot)
+	}
+	if (next.folders !== prev.folders) {
+		refreshFolderStats(next.folders)
+	}
+	if (next.discovered !== prev.discovered || next.sort !== prev.sort) {
+		renderDiscovery()
+	}
+	if (next.missing !== prev.missing) {
+		renderMissingList()
+	}
+	if (next.analysis !== prev.analysis) {
+		renderAnalysis()
+	}
+})
 
 // --- Helpers ---
 const setStatus = (id, msg, type = 'info') => {
 	const el = $(id)
 	if (el) el.innerHTML = `<div class="status ${type}">${msg}</div>`
+}
+
+const setProcessing = (isProcessing, scope = 'folders') => {
+	store.setState(prev => ({
+		processing: {
+			...prev.processing,
+			[scope]: isProcessing
+		}
+	}), { type: 'processing', scope })
 }
 
 const normalizeErrorMessage = (error) => {
@@ -71,8 +113,128 @@ const updateStat = (id, val) => {
 	if (el) el.textContent = val
 }
 
+function renderProcessing(processing) {
+	const isFolders = !!processing.folders
+	const isDiscovery = !!processing.discovery
+
+	const analysisSection = $('analysisResults')
+	if (analysisSection) {
+		analysisSection.classList.toggle('is-processing', isFolders)
+	}
+	const discoverySection = $('contentDiscovery')
+	if (discoverySection) {
+		discoverySection.classList.toggle('is-processing', isDiscovery)
+	}
+	const btnAnalyze = $('btnAnalyze')
+	if (btnAnalyze) btnAnalyze.disabled = isFolders || isDiscovery
+	const btnScan = $('btnScan')
+	if (btnScan) btnScan.disabled = isFolders || isDiscovery
+}
+
+function renderConfig(config) {
+	if ($('mergeCase')) $('mergeCase').checked = config.mergeCase
+
+	const btnScan = $('btnScan')
+	if (btnScan) btnScan.textContent = browserApi.i18n.getMessage('scanAndDiscoverLimit', [config.scanLimit])
+
+	const rootSelect = $('targetRoot')
+	if (rootSelect && !rootSelect.value && config.defaultRoot) {
+		rootSelect.value = config.defaultRoot
+	}
+}
+
+const updateRulesDirtyState = () => {
+	const currentRules = $('currentRules')
+	const isDirty = currentRules && currentRules.value !== state.rulesSnapshot
+	if (currentRules) {
+		currentRules.classList.toggle('is-dirty', !!isDirty)
+	}
+}
+
+const dedupeRawRules = (content) => {
+	const marker = 'name="'
+	const firstIdx = content.indexOf(marker)
+	if (firstIdx === -1) return content
+	const header = content.substring(0, firstIdx)
+	const rulesContent = content.substring(firstIdx)
+	const blocks = rulesContent.split(/(?=name=")/g).map(block => block.trim()).filter(Boolean)
+	const seen = new Set()
+	const unique = []
+	blocks.forEach(block => {
+		const key = block.replace(/\r\n/g, '\n').trim()
+		if (seen.has(key)) return
+		seen.add(key)
+		unique.push(block)
+	})
+	return `${header}${unique.join('\n')}`
+}
+
+const dedupeRawRulesByPath = (content) => {
+	const marker = 'name="'
+	const firstIdx = content.indexOf(marker)
+	if (firstIdx === -1) return content
+	const header = content.substring(0, firstIdx)
+	const rulesContent = content.substring(firstIdx)
+	const blocks = rulesContent.split(/(?=name=")/g).map(block => block.trim()).filter(Boolean)
+	const seen = new Set()
+	const unique = []
+	blocks.forEach(block => {
+		const path = RuleEngine.extractPathFromBlock(block)
+		const key = path ? path.toLowerCase() : block.replace(/\r\n/g, '\n').trim()
+		if (seen.has(key)) return
+		seen.add(key)
+		unique.push(block)
+	})
+	return `${header}${unique.join('\n')}`
+}
+
+const appendGeneratedRules = (generated) => {
+	if (!generated || !generated.trim()) return
+	const currentRules = $('currentRules')
+	if (!currentRules) return
+	const combined = `${currentRules.value || ''}\n${generated}`
+	const deduped = dedupeRawRules(combined)
+	const dedupedByPath = dedupeRawRulesByPath(deduped)
+	const sorted = RuleEngine.sortRawRules(dedupedByPath)
+	currentRules.value = sorted
+	syncRuleState(currentRules.value)
+}
+
+	const withButtonBusy = async (button, action) => {
+		if (!button) return action()
+		const originalText = button.textContent
+		const busyText = button.dataset.busyText || 'Working...'
+		const block = button.closest('#analysisResults')
+		const siblings = block ? Array.from(block.querySelectorAll('aside.stat button')) : [button]
+		siblings.forEach(btn => {
+			btn.dataset.prevDisabled = btn.disabled ? 'true' : 'false'
+			btn.disabled = true
+		})
+		button.textContent = busyText
+		button.classList.add('is-busy')
+		try {
+			return await action()
+		} finally {
+			button.textContent = originalText
+			button.classList.remove('is-busy')
+			siblings.forEach(btn => {
+				btn.disabled = btn.dataset.prevDisabled === 'true'
+				delete btn.dataset.prevDisabled
+			})
+		}
+	}
+
+function renderRulesSnapshot(nextSnapshot) {
+	const currentRules = $('currentRules')
+	if (!currentRules) return
+	if (currentRules.value !== nextSnapshot) {
+		currentRules.value = nextSnapshot
+	}
+	updateRulesDirtyState()
+}
+
 const getUniqueRuleEmails = () => {
-	const rules = RuleEngine.parse($('pasteInput')?.value || '')
+	const rules = RuleEngine.parse($('currentRules')?.value || '')
 	return new Set(rules.flatMap(rule => rule.emails))
 }
 
@@ -99,12 +261,11 @@ const buildEmailToRulePathMap = (rules) => {
 }
 
 const analyzeRulesAndFolders = (rootPath, folderEmailMap) => {
-	const rules = RuleEngine.parse($('pasteInput')?.value || '')
+	const rules = RuleEngine.parse($('currentRules')?.value || '')
 	const ruleEmailMap = buildEmailToRulePathMap(rules)
 
 	const missingRules = []
 	const mismatchedRules = []
-	const expectedMissing = []
 
 	folderEmailMap.forEach((actualPath, email) => {
 		const expectedSuffix = RuleEngine.emailToPath(email)
@@ -122,16 +283,7 @@ const analyzeRulesAndFolders = (rootPath, folderEmailMap) => {
 		}
 	})
 
-	// Rules that point into the target tree but no folder/email exists there
-	const expectedPathSet = new Set(folderEmailMap.values())
-	ruleEmailMap.forEach((path, email) => {
-		const inRoot = rootPath ? (path === rootPath || path.startsWith(`${rootPath}/`)) : true
-		if (inRoot && !expectedPathSet.has(path)) {
-			expectedMissing.push({ email, rulePath: path })
-		}
-	})
-
-	return { missingRules, mismatchedRules, expectedMissing }
+	return { missingRules, mismatchedRules }
 }
 
 const listItems = (items, formatFn) => {
@@ -148,6 +300,125 @@ const renderAnalysisList = (id, items, formatFn) => {
 		div.textContent = formatFn(item)
 		container.appendChild(div)
 	})
+}
+
+function renderAnalysis() {
+	const analysis = state.analysis
+	if (!analysis) {
+		setCounter('countMissingInbox', 0)
+		setCounter('countMissingLeafRules', 0)
+		setCounter('countMismatchedFolders', 0)
+		setCounter('countEmptyLeafFolders', 0)
+		setCounter('countInvalidRules', 0)
+		$('analysisReportContent') && ($('analysisReportContent').textContent = '')
+		$('analysisReport')?.classList.add('hidden')
+		$('missingInboxDetails')?.classList.add('hidden')
+		$('missingLeafDetails')?.classList.add('hidden')
+		$('mismatchedDetails')?.classList.add('hidden')
+		$('emptyFoldersDetails')?.classList.add('hidden')
+		$('invalidRulesDetails')?.classList.add('hidden')
+		if ($('btnGenMissingInbox')) $('btnGenMissingInbox').disabled = true
+		if ($('btnGenMissingLeaf')) $('btnGenMissingLeaf').disabled = true
+		if ($('btnGenMismatched')) $('btnGenMismatched').disabled = true
+		if ($('btnDeleteEmptyFolders')) $('btnDeleteEmptyFolders').disabled = true
+		if ($('btnDeleteInvalidRules')) $('btnDeleteInvalidRules').disabled = true
+		return
+	}
+
+		const {
+			missingInboxRules,
+			missingLeafRules,
+			mismatchedFolders,
+			emptyLeafFolders,
+			invalidRules
+		} = analysis
+
+	const report = $('analysisReportContent')
+	const reportPanel = $('analysisReport')
+	if (report && reportPanel) {
+		const lines = []
+		lines.push(`Missing rules for valid folders: ${missingLeafRules.length}`)
+		missingLeafRules.forEach(item => {
+			lines.push(`- ${item.email} -> ${item.expectedPath}`)
+		})
+		lines.push('')
+		lines.push(`Folders that don't match expected rule path: ${mismatchedFolders.length}`)
+		mismatchedFolders.forEach(item => {
+			lines.push(`- ${item.email} actual: ${item.actualPath || item.rulePath} expected: ${item.expectedPath}`)
+		})
+		lines.push('')
+		lines.push('')
+		lines.push(`Empty leaf folders (no senders found): ${emptyLeafFolders.length}`)
+		emptyLeafFolders.forEach(path => lines.push(`- ${path}`))
+		report.textContent = lines.join('\n')
+		reportPanel.classList.remove('hidden')
+	}
+
+	setCounter('countMissingInbox', missingInboxRules.length)
+	setCounter('countMissingLeafRules', missingLeafRules.length)
+	setCounter('countMismatchedFolders', mismatchedFolders.length)
+	setCounter('countEmptyLeafFolders', emptyLeafFolders.length)
+	setCounter('countInvalidRules', invalidRules.length)
+
+	if ($('missingInboxDetails')) $('missingInboxDetails').classList.toggle('hidden', missingInboxRules.length === 0)
+	renderAnalysisList('listMissingInbox', missingInboxRules, email => email)
+
+	if ($('missingLeafDetails')) $('missingLeafDetails').classList.toggle('hidden', missingLeafRules.length === 0)
+	renderAnalysisList('listMissingLeafRules', missingLeafRules, item => `${item.email} -> ${item.expectedPath}`)
+
+	if ($('mismatchedDetails')) $('mismatchedDetails').classList.toggle('hidden', mismatchedFolders.length === 0)
+	renderAnalysisList('listMismatchedFolders', mismatchedFolders, item => `${item.email} actual: ${item.actualPath || item.rulePath} expected: ${item.expectedPath}`)
+
+
+	if ($('emptyFoldersDetails')) $('emptyFoldersDetails').classList.toggle('hidden', emptyLeafFolders.length === 0)
+	renderAnalysisList('listEmptyLeafFolders', emptyLeafFolders, path => path)
+
+	if ($('invalidRulesDetails')) $('invalidRulesDetails').classList.toggle('hidden', invalidRules.length === 0)
+	renderAnalysisList('listInvalidRules', invalidRules, item => `${item.email} -> ${item.rulePath} (expected ${item.expectedPath})`)
+
+	if ($('btnGenMissingInbox')) $('btnGenMissingInbox').disabled = missingInboxRules.length === 0
+	if ($('btnGenMissingLeaf')) $('btnGenMissingLeaf').disabled = missingLeafRules.length === 0
+	if ($('btnGenMismatched')) $('btnGenMismatched').disabled = mismatchedFolders.length === 0
+	if ($('btnDeleteEmptyFolders')) $('btnDeleteEmptyFolders').disabled = emptyLeafFolders.length === 0
+	if ($('btnDeleteInvalidRules')) $('btnDeleteInvalidRules').disabled = invalidRules.length === 0
+}
+
+function renderMissingList() {
+	const missing = state.missing || []
+	const currentRoot = getCurrentRoot()
+	const scopedMissing = currentRoot
+		? missing.filter(path => path === currentRoot || path.startsWith(`${currentRoot}/`))
+		: missing
+	const stats = MailClient.computeFolderStats(state.folders, currentRoot)
+	updateStat('resLeafs', stats.leafs)
+	updateStat('resMissing', scopedMissing.length)
+
+	const list = $('missingList')
+	if (!list) return
+	list.innerHTML = ''
+	list.classList.toggle('empty-state', missing.length === 0)
+
+	if (scopedMissing.length === 0) {
+		list.textContent = browserApi.i18n.getMessage('allFoldersExist')
+		$('btnCreateMissing').disabled = true
+		$('btnCreateMissingInline').disabled = true
+		$('missingFoldersDetails')?.classList.add('hidden')
+	} else {
+		scopedMissing.forEach(p => {
+			const div = document.createElement('div')
+			div.className = 'folder-item pending'
+			div.textContent = p
+			list.appendChild(div)
+		})
+		$('btnCreateMissing').disabled = false
+		$('btnCreateMissing').textContent = browserApi.i18n.getMessage('createFolders', [scopedMissing.length])
+		const inlineBtn = $('btnCreateMissingInline')
+		if (inlineBtn) {
+			inlineBtn.disabled = false
+			inlineBtn.textContent = browserApi.i18n.getMessage('createFolders', [scopedMissing.length])
+		}
+		$('missingFoldersDetails')?.classList.remove('hidden')
+	}
 }
 
 const setCounter = (id, value) => {
@@ -209,7 +480,12 @@ const saveAccountPreferences = async () => {
 		source,
 		target
 	}
-	state.config.accountPreferences = accountPreferences
+	store.setState(prev => ({
+		config: {
+			...prev.config,
+			accountPreferences
+		}
+	}), { type: 'config:account-preferences' })
 
 	try {
 		await storage.set({ accountPreferences })
@@ -226,12 +502,42 @@ const collectPathWarnings = (paths) => {
 	})
 }
 
+const showWarningsDialog = (warnings) => new Promise(resolve => {
+	const dialog = $('warningsDialog')
+	const list = $('warningsList')
+	const btnConfirm = $('warningsConfirm')
+	const btnCancel = $('warningsCancel')
+	if (!dialog || !list || !btnConfirm || !btnCancel) {
+		resolve(true)
+		return
+	}
+	list.textContent = warnings.join('\n')
+	const close = (result) => {
+		dialog.close()
+		btnConfirm.removeEventListener('click', onConfirm)
+		btnCancel.removeEventListener('click', onCancel)
+		dialog.removeEventListener('click', onBackdrop)
+		resolve(result)
+	}
+	const onConfirm = () => close(true)
+	const onCancel = () => close(false)
+	const onBackdrop = (e) => {
+		if (e.target && e.target.dataset && e.target.dataset.close) {
+			close(false)
+		}
+	}
+	btnConfirm.addEventListener('click', onConfirm)
+	btnCancel.addEventListener('click', onCancel)
+	dialog.addEventListener('click', onBackdrop)
+	dialog.showModal()
+})
+
 // Account/Rules Validation
 function validateAccountRulesMatch() {
-	const pasteInput = $('pasteInput')
-	if (!pasteInput || !pasteInput.value || !state.accountBaseUri) return null
+	const currentRules = $('currentRules')
+	if (!currentRules || !currentRules.value || !state.accountBaseUri) return null
 	
-	const rulesBaseUri = RuleEngine.extractBaseUri(pasteInput.value)
+	const rulesBaseUri = RuleEngine.extractBaseUri(currentRules.value)
 	
 	// If rules have placeholder or no URI, no mismatch
 	if (!rulesBaseUri || rulesBaseUri === "imap://REPLACE_ME") return null
@@ -256,14 +562,7 @@ async function loadConfig() {
 			filters: [],
 			accountPreferences: {}
 		})
-		state.config = saved
-		
-		// Apply to UI
-		if($('mergeCase')) $('mergeCase').checked = state.config.mergeCase
-		
-		// Update scan button text to reflect limit
-		const btnScan = $('btnScan')
-		if(btnScan) btnScan.textContent = browserApi.i18n.getMessage('scanAndDiscoverLimit', [state.config.scanLimit])
+		store.setState({ config: saved }, { type: 'config:load' })
 
 	} catch (e) {
 		console.error("Failed to load config", e)
@@ -276,20 +575,18 @@ async function loadAccount(id) {
 
 	// Get account data and folder structure
 	const data = await MailClient.scanAccount(id)
-	state.folders = data.folders || []
+	store.setState({ folders: data.folders || [] }, { type: 'folders:load' })
 	
 	// Store account object and construct base URI
 	try {
-		state.currentAccount = await browserApi.accounts.get(id)
-		if (state.currentAccount.identities && state.currentAccount.identities.length > 0) {
-			const email = state.currentAccount.identities[0].email
-			state.accountBaseUri = `imap://${email}`
-		} else {
-			state.accountBaseUri = "imap://REPLACE_ME"
-		}
+		const currentAccount = await browserApi.accounts.get(id)
+		const accountBaseUri = (currentAccount.identities && currentAccount.identities.length > 0)
+			? `imap://${currentAccount.identities[0].email}`
+			: "imap://REPLACE_ME"
+		store.setState({ currentAccount, accountBaseUri }, { type: 'account:load' })
 	} catch (e) {
 		console.error("Failed to get account details", e)
-		state.accountBaseUri = "imap://REPLACE_ME"
+		store.setState({ accountBaseUri: "imap://REPLACE_ME" }, { type: 'account:error' })
 	}
 
 	const rootPath = getCurrentRoot()
@@ -341,8 +638,8 @@ async function loadAccount(id) {
 	refreshFolderStats()
 }
 
-const refreshFolderStats = () => {
-	const stats = MailClient.computeFolderStats(state.folders, getCurrentRoot())
+const refreshFolderStats = (folders = state.folders) => {
+	const stats = MailClient.computeFolderStats(folders, getCurrentRoot())
 	updateStat('statTotal', stats.total)
 	updateStat('statLeafs', stats.leafs)
 	const panel = $('leafDebugPanel')
@@ -415,16 +712,21 @@ function updateRuleStats(text) {
 	if (btn) btn.disabled = !($('account').value && text)
 }
 
+const syncRuleState = (text) => {
+	updateRuleStats(text)
+	updateRulesDirtyState()
+}
+
 function renderDiscovery() {
 	const list = $('discoveryList')
 	list.innerHTML = ''
 
-	state.discovered.sort((a, b) => {
+	const sorted = [...state.discovered].sort((a, b) => {
 		const va = a[state.sort.col] || '', vb = b[state.sort.col] || ''
 		return va.localeCompare(vb) * state.sort.dir
 	})
 
-	state.discovered.forEach((item, i) => {
+	sorted.forEach((item) => {
 		const row = document.createElement('div')
 		row.className = `discovery-item ${item.selected ? 'selected' : ''}`
 		row.innerHTML = `
@@ -433,8 +735,13 @@ function renderDiscovery() {
 			<div class="path">${item.path}</div>`
 
 		const toggle = () => {
-			item.selected = !item.selected
-			renderDiscovery() 
+			store.setState(prev => ({
+				discovered: prev.discovered.map(entry => (
+					entry.email === item.email && entry.path === item.path
+						? { ...entry, selected: !entry.selected }
+						: entry
+				))
+			}), { type: 'discovery:toggle', email: item.email })
 		}
 
 		row.querySelector('input').onclick = e => { e.stopPropagation(); toggle() }
@@ -495,17 +802,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 	// Storage Listener for Real-time updates from the Modal/Options Page
 	browserApi.storage.onChanged.addListener((changes, area) => {
 		if (area === 'sync') {
-			Object.keys(changes).forEach(key => {
-				state.config[key] = changes[key].newValue;
-			});
-			
-			// Reflect in UI immediately
-			if($('mergeCase')) $('mergeCase').checked = state.config.mergeCase
-			if($('btnScan')) $('btnScan').textContent = browserApi.i18n.getMessage('scanAndDiscoverLimit', [state.config.scanLimit])
-		const rootSelect = $('targetRoot')
-		if (rootSelect && !rootSelect.value && state.config.defaultRoot) {
-			rootSelect.value = state.config.defaultRoot
-		}
+			store.setState(prev => {
+				const nextConfig = { ...prev.config }
+				Object.keys(changes).forEach(key => {
+					nextConfig[key] = changes[key].newValue
+				})
+				return { config: nextConfig }
+			}, { type: 'config:update' })
 		}
 	})
 
@@ -541,20 +844,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 		loadAccount(accounts[0].id).catch(console.error)
 	}
 
-	const pasteInput = $('pasteInput')
-	if (pasteInput && pasteInput.value) {
-		updateRuleStats(pasteInput.value)
+	const currentRules = $('currentRules')
+	if (currentRules && currentRules.value) {
+		updateRuleStats(currentRules.value)
 	}
 
 	accSel.onchange = () => loadAccount(accSel.value).catch(console.error)
 
 	$('fileInput').onchange = async e => {
 		const text = await e.target.files[0].text()
-		if (pasteInput) pasteInput.value = text
-		updateRuleStats(text)
+		if (currentRules) currentRules.value = text
+		store.setState({ rulesSnapshot: text }, { type: 'rules:load' })
+		syncRuleState(text)
+		if ($('btnAnalyze') && $('account').value) {
+			$('btnAnalyze').click()
+		}
 	}
 
-	if (pasteInput) pasteInput.oninput = e => updateRuleStats(e.target.value)
+	if (currentRules) currentRules.oninput = e => {
+		syncRuleState(e.target.value)
+	}
 	if ($('targetRoot')) {
 		$('targetRoot').onchange = () => {
 			const validated = validateTargetRoot(state.folders, getCurrentRoot())
@@ -593,10 +902,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 	
 	// Sort Button for Input
 	$('btnSortInput').onclick = () => {
-		const val = pasteInput.value
+		const val = currentRules.value
 		if(!val) return
 		const sorted = RuleEngine.sortRawRules(val)
-		pasteInput.value = sorted
+		currentRules.value = sorted
+		syncRuleState(sorted)
 		// Visual feedback
 		const btn = $('btnSortInput')
 		const originalText = btn.textContent
@@ -606,14 +916,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	// Apply Defaults Button
 	$('btnApplyDefaults').onclick = () => {
-		const val = pasteInput.value
+		const val = currentRules.value
 		if(!val) return
 		
 		const typeMask = getFilterTypeMask()
 		const updated = RuleEngine.updateFilterTypes(val)(typeMask)
 		
 		if (updated !== val) {
-			pasteInput.value = updated
+			currentRules.value = updated
+			syncRuleState(updated)
 			const btn = $('btnApplyDefaults')
 			const originalText = btn.textContent
 			btn.textContent = '✓ Applied'
@@ -630,6 +941,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 		e.preventDefault()
 		const btn = $('btnAnalyze')
 		btn.disabled = true
+		setProcessing(true, 'folders')
 		setStatus('statusFolders', browserApi.i18n.getMessage('analyzing'), 'progress')
 
 		// Use state.config OR the checkbox (which is synced via listener, but checking DOM is safer for immediate user override)
@@ -640,16 +952,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 			res = await sendRuntimeMessage({
 				action: 'analyze',
 				accountId: $('account').value,
-				filterContent: $('pasteInput').value,
+				filterContent: $('currentRules').value,
 				mergeCase: currentMerge,
 				rootPath: getCurrentRoot()
 			}, 'statusFolders')
 		} catch (error) {
 			btn.disabled = false
+			setProcessing(false, 'folders')
 			return
 		}
 
-		state.missing = res.missing
+		store.setState({ missing: res.missing }, { type: 'analysis:missing' })
 		const currentRoot = getCurrentRoot()
 		const scopedMissing = currentRoot
 			? res.missing.filter(path => path === currentRoot || path.startsWith(`${currentRoot}/`))
@@ -702,168 +1015,140 @@ document.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 
-		const ruleEmails = new Set(RuleEngine.parse($('pasteInput')?.value || '').flatMap(rule => rule.emails))
+		const ruleEmails = new Set(RuleEngine.parse($('currentRules')?.value || '').flatMap(rule => rule.emails))
 		const missingInboxRules = inboxEmails.filter(email => !ruleEmails.has(email))
 
 		const analysis = analyzeRulesAndFolders(currentRoot, leafEmailMap)
-		const report = $('analysisReportContent')
-		const reportPanel = $('analysisReport')
-		if (report && reportPanel) {
-			const lines = []
-			lines.push(`Missing rules for valid folders: ${analysis.missingRules.length}`)
-			analysis.missingRules.forEach(item => {
-				lines.push(`- ${item.email} -> ${item.expectedPath}`)
-			})
-			lines.push('')
-			lines.push(`Folders that don't match expected rule path: ${analysis.mismatchedRules.length}`)
-			analysis.mismatchedRules.forEach(item => {
-				lines.push(`- ${item.email} actual: ${item.actualPath || item.rulePath} expected: ${item.expectedPath}`)
-			})
-			lines.push('')
-			lines.push(`Rules pointing to missing folders: ${analysis.expectedMissing.length}`)
-			analysis.expectedMissing.forEach(item => {
-				lines.push(`- ${item.email} -> ${item.rulePath}`)
-			})
-			lines.push('')
-			lines.push(`Empty leaf folders (no senders found): ${emptyFolders.length}`)
-			emptyFolders.forEach(path => lines.push(`- ${path}`))
-			report.textContent = lines.join('\n')
-			reportPanel.classList.remove('hidden')
-		}
-
-		setCounter('countMissingInbox', missingInboxRules.length)
-		setCounter('countMissingLeafRules', analysis.missingRules.length)
-		setCounter('countMismatchedFolders', analysis.mismatchedRules.length)
-		setCounter('countRulesMissingFolders', analysis.expectedMissing.length)
-		setCounter('countEmptyLeafFolders', emptyFolders.length)
-
-		if ($('missingInboxDetails')) $('missingInboxDetails').classList.toggle('hidden', missingInboxRules.length === 0)
-		renderAnalysisList('listMissingInbox', missingInboxRules, email => email)
-
-		if ($('missingLeafDetails')) $('missingLeafDetails').classList.toggle('hidden', analysis.missingRules.length === 0)
-		renderAnalysisList('listMissingLeafRules', analysis.missingRules, item => `${item.email} -> ${item.expectedPath}`)
-
-		if ($('mismatchedDetails')) $('mismatchedDetails').classList.toggle('hidden', analysis.mismatchedRules.length === 0)
-		renderAnalysisList('listMismatchedFolders', analysis.mismatchedRules, item => `${item.email} actual: ${item.actualPath || item.rulePath} expected: ${item.expectedPath}`)
-
-		if ($('rulesMissingDetails')) $('rulesMissingDetails').classList.toggle('hidden', analysis.expectedMissing.length === 0)
-		renderAnalysisList('listRulesMissingFolders', analysis.expectedMissing, item => `${item.email} -> ${item.rulePath}`)
-
-		if ($('emptyFoldersDetails')) $('emptyFoldersDetails').classList.toggle('hidden', emptyFolders.length === 0)
-		renderAnalysisList('listEmptyLeafFolders', emptyFolders, path => path)
-
-		const btnGenMissingInbox = $('btnGenMissingInbox')
-		if (btnGenMissingInbox) btnGenMissingInbox.disabled = missingInboxRules.length === 0
-		const btnGenMissingLeaf = $('btnGenMissingLeaf')
-		if (btnGenMissingLeaf) btnGenMissingLeaf.disabled = analysis.missingRules.length === 0
-		const btnGenMismatched = $('btnGenMismatched')
-		if (btnGenMismatched) btnGenMismatched.disabled = analysis.mismatchedRules.length === 0
-		const btnCreateRuleFolders = $('btnCreateRuleFolders')
-		if (btnCreateRuleFolders) btnCreateRuleFolders.disabled = analysis.expectedMissing.length === 0
-		const btnDeleteEmptyFolders = $('btnDeleteEmptyFolders')
-		if (btnDeleteEmptyFolders) btnDeleteEmptyFolders.disabled = emptyFolders.length === 0
-
-		state.analysis = {
-			missingInboxRules,
-			missingLeafRules: analysis.missingRules,
-			mismatchedFolders: analysis.mismatchedRules,
-			rulesMissingFolders: analysis.expectedMissing,
-			emptyLeafFolders: emptyFolders
-		}
-
-		const list = $('missingList')
-		list.innerHTML = ''
-		list.classList.toggle('empty-state', res.missing.length === 0)
-
-		if (scopedMissing.length === 0) {
-			list.textContent = browserApi.i18n.getMessage('allFoldersExist')
-			$('btnCreateMissing').disabled = true
-		} else {
-			scopedMissing.forEach(p => {
-				const div = document.createElement('div')
-				div.className = 'folder-item pending'
-				div.textContent = p
-				list.appendChild(div)
-			})
-			$('btnCreateMissing').disabled = false
-			$('btnCreateMissing').textContent = browserApi.i18n.getMessage('createFolders', [scopedMissing.length])
-		}
+		const invalidRules = analysis.mismatchedRules.filter(item => item.rulePath)
+		store.setState({
+			analysis: {
+				missingInboxRules,
+				missingLeafRules: analysis.missingRules,
+				mismatchedFolders: analysis.mismatchedRules,
+				emptyLeafFolders: emptyFolders,
+				invalidRules
+			}
+		}, { type: 'analysis:results' })
 		setStatus('statusFolders', 'Done', 'success')
 		btn.disabled = false
+		setProcessing(false, 'folders')
 	}
 
 	const btnCreateMissing = $('btnCreateMissing')
-	if (btnCreateMissing) btnCreateMissing.onclick = () => {
-		const warnings = collectPathWarnings(state.missing)
-		if (warnings.length > 0 && !window.confirm(warnings.join('\n') + '\n\nContinue anyway?')) return
-		if (!state.missing || state.missing.length === 0) {
-			setStatus('statusFolders', 'No folders to create.', 'info')
-			return
-		}
-		runCreate(state.missing, 'statusFolders', btnCreateMissing)
+	if (btnCreateMissing) btnCreateMissing.onclick = async () => {
+		await withButtonBusy(btnCreateMissing, async () => {
+			const warnings = collectPathWarnings(state.missing)
+			if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
+			if (!state.missing || state.missing.length === 0) {
+				setStatus('statusFolders', 'No folders to create.', 'info')
+				return
+			}
+			await runCreate(state.missing, 'statusFolders', btnCreateMissing)
+			await $('btnAnalyze')?.click()
+		})
+	}
+
+	const btnCreateMissingInline = $('btnCreateMissingInline')
+	if (btnCreateMissingInline) btnCreateMissingInline.onclick = async () => {
+		await withButtonBusy(btnCreateMissingInline, async () => {
+			const warnings = collectPathWarnings(state.missing)
+			if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
+			if (!state.missing || state.missing.length === 0) {
+				setStatus('statusFolders', 'No folders to create.', 'info')
+				return
+			}
+			await runCreate(state.missing, 'statusFolders', btnCreateMissingInline)
+			await $('btnAnalyze')?.click()
+		})
 	}
 
 	const btnGenMissingInbox = $('btnGenMissingInbox')
 	if (btnGenMissingInbox) btnGenMissingInbox.onclick = async () => {
 		if (!state.analysis) return
-		btnGenMissingInbox.disabled = true
-		const root = getCurrentRoot()
-		const genBlock = RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')
-		const rules = state.analysis.missingInboxRules.map(email => {
-			const suffix = RuleEngine.emailToPath(email)
-			const path = root ? `${root}/${suffix}` : suffix
-			return genBlock(email, path, getFilterTypeMask())
+		setProcessing(true, 'folders')
+		await withButtonBusy(btnGenMissingInbox, async () => {
+			const root = getCurrentRoot()
+			const genBlock = RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')
+			const rules = state.analysis.missingInboxRules.map(email => {
+				const suffix = RuleEngine.emailToPath(email)
+				const path = root ? `${root}/${suffix}` : suffix
+				return genBlock(email, path, getFilterTypeMask())
+			})
+			appendGeneratedRules(rules.join('\n'))
+			await $('btnAnalyze')?.click()
 		})
-		const out = $('analysisRulesOut')
-		if (out) out.value = rules.join('\n')
-		$('analysisRulesDetails')?.classList.remove('hidden')
-		await $('btnAnalyze')?.click()
-		btnGenMissingInbox.disabled = false
+		setProcessing(false, 'folders')
+	}
+
+	const btnDownloadRules = $('btnDownloadRules')
+	if (btnDownloadRules) btnDownloadRules.onclick = async () => {
+		const content = $('currentRules')?.value || ''
+		if (!content.trim()) {
+			setStatus('statusFolders', 'No rules to download.', 'info')
+			return
+		}
+		const sorted = RuleEngine.sortRawRules(content)
+		const url = URL.createObjectURL(new Blob([sorted], { type: 'text/plain' }))
+		await browserApi.downloads.download({ url, filename: 'msgFilterRules.dat', saveAs: true })
 	}
 
 	const btnGenMissingLeaf = $('btnGenMissingLeaf')
 	if (btnGenMissingLeaf) btnGenMissingLeaf.onclick = async () => {
 		if (!state.analysis) return
-		btnGenMissingLeaf.disabled = true
-		const genBlock = RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')
-		const rules = state.analysis.missingLeafRules.map(item => {
-			return genBlock(item.email, item.expectedPath, getFilterTypeMask())
+		setProcessing(true, 'folders')
+		await withButtonBusy(btnGenMissingLeaf, async () => {
+			const genBlock = RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')
+			const rules = state.analysis.missingLeafRules.map(item => {
+				return genBlock(item.email, item.expectedPath, getFilterTypeMask())
+			})
+			appendGeneratedRules(rules.join('\n'))
+			await $('btnAnalyze')?.click()
 		})
-		const out = $('analysisRulesOut')
-		if (out) out.value = rules.join('\n')
-		$('analysisRulesDetails')?.classList.remove('hidden')
-		await $('btnAnalyze')?.click()
-		btnGenMissingLeaf.disabled = false
+		setProcessing(false, 'folders')
 	}
 
 	const btnGenMismatched = $('btnGenMismatched')
 	if (btnGenMismatched) btnGenMismatched.onclick = async () => {
 		if (!state.analysis) return
-		btnGenMismatched.disabled = true
-		const genBlock = RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')
-		const rules = state.analysis.mismatchedFolders.map(item => {
-			return genBlock(item.email, item.expectedPath, getFilterTypeMask())
+		setProcessing(true, 'folders')
+		await withButtonBusy(btnGenMismatched, async () => {
+			const genBlock = RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')
+			const rules = state.analysis.mismatchedFolders.map(item => {
+				return genBlock(item.email, item.expectedPath, getFilterTypeMask())
+			})
+			appendGeneratedRules(rules.join('\n'))
+			await $('btnAnalyze')?.click()
 		})
-		const out = $('analysisRulesOut')
-		if (out) out.value = rules.join('\n')
-		$('analysisRulesDetails')?.classList.remove('hidden')
-		await $('btnAnalyze')?.click()
-		btnGenMismatched.disabled = false
+		setProcessing(false, 'folders')
 	}
 
-	const btnCreateRuleFolders = $('btnCreateRuleFolders')
-	if (btnCreateRuleFolders) btnCreateRuleFolders.onclick = async () => {
-		if (!state.analysis) return
-		btnCreateRuleFolders.disabled = true
-		const paths = state.analysis.rulesMissingFolders.map(item => item.rulePath)
-		await runCreate(paths, 'statusFolders', btnCreateRuleFolders)
-		await $('btnAnalyze')?.click()
-		btnCreateRuleFolders.disabled = false
-	}
+	// Rules-to-missing-folders removed
 
 	const btnDeleteEmptyFolders = $('btnDeleteEmptyFolders')
 	if (btnDeleteEmptyFolders) btnDeleteEmptyFolders.onclick = async () => {
-		setStatus('statusFolders', 'Delete empty folders not supported by API.', 'warning')
+		await withButtonBusy(btnDeleteEmptyFolders, async () => {
+			setStatus('statusDeleteEmpty', 'Delete empty folders is not supported by the Thunderbird API.', 'warning')
+			await $('btnAnalyze')?.click()
+		})
+	}
+
+	const btnDeleteInvalidRules = $('btnDeleteInvalidRules')
+	if (btnDeleteInvalidRules) btnDeleteInvalidRules.onclick = async () => {
+		if (!state.analysis) return
+		setProcessing(true, 'folders')
+		await withButtonBusy(btnDeleteInvalidRules, async () => {
+			const invalidEmails = new Set(state.analysis.invalidRules.map(item => item.email))
+			const currentRules = $('currentRules')
+			if (currentRules) {
+				const filtered = RuleEngine.parse(currentRules.value)
+					.filter(rule => rule.emails.every(email => !invalidEmails.has(email)))
+					.map(rule => RuleEngine.generateBlock(state.accountBaseUri || 'imap://REPLACE_ME')(rule.emails[0], rule.path, getFilterTypeMask()))
+				currentRules.value = filtered.join('\n')
+				syncRuleState(currentRules.value)
+			}
+			await $('btnAnalyze')?.click()
+		})
+		setProcessing(false, 'folders')
 	}
 
 	const btnLeafDebug = $('btnLeafDebug')
@@ -900,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	$('formDiscovery').onsubmit = async e => {
 		e.preventDefault()
+		setProcessing(true, 'discovery')
 		setStatus('statusDiscovery', 'Scanning...', 'progress')
 		let emails
 		try {
@@ -917,13 +1203,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 				limit: state.config.scanLimit // Use Config
 			}, 'statusDiscovery')
 		} catch (error) {
+			setProcessing(false, 'discovery')
 			return
 		}
 
-		const existingEmails = new Set(RuleEngine.parse($('pasteInput').value).flatMap(r => r.emails))
+		const existingEmails = new Set(RuleEngine.parse($('currentRules').value).flatMap(r => r.emails))
 		const root = getCurrentRoot()
 
-		state.discovered = emails
+		store.setState({
+			discovered: emails
 			.filter(e => !existingEmails.has(e))
 			.map(email => {
 				const suffix = RuleEngine.emailToPath(email)
@@ -934,105 +1222,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 				} : null
 			})
 			.filter(Boolean)
+		}, { type: 'discovery:results' })
 
-		renderDiscovery()
 		setStatus('statusDiscovery', `Found ${state.discovered.length}`, 'success')
-		$('genRulesArea').classList.remove('hidden')
+		setProcessing(false, 'discovery')
 	}
 
 	const selectAll = $('selectAllDiscovery')
 	if (selectAll) selectAll.onchange = e => {
-		state.discovered.forEach(i => i.selected = e.target.checked)
-		renderDiscovery()
+		const selected = e.target.checked
+		store.setState(prev => ({
+			discovered: prev.discovered.map(item => ({ ...item, selected }))
+		}), { type: 'discovery:select-all' })
 	}
 
 	document.querySelectorAll('.sortable').forEach(el => el.onclick = () => {
 		const col = el.dataset.sort
-		if (state.sort.col === col) state.sort.dir *= -1
-		else { state.sort.col = col; state.sort.dir = 1 }
-		renderDiscovery()
+		store.setState(prev => ({
+			sort: prev.sort.col === col
+				? { ...prev.sort, dir: prev.sort.dir * -1 }
+				: { col, dir: 1 }
+		}), { type: 'discovery:sort' })
 	})
 
 	const btnCreateDiscovered = $('btnCreateDiscovered')
-	if (btnCreateDiscovered) btnCreateDiscovered.onclick = () => {
+	if (btnCreateDiscovered) btnCreateDiscovered.onclick = async () => {
 		const paths = state.discovered.filter(i => i.selected).map(i => i.path)
 		const warnings = collectPathWarnings(paths)
-		if (warnings.length > 0 && !window.confirm(warnings.join('\n') + '\n\nContinue anyway?')) return
+		if (warnings.length > 0 && !(await showWarningsDialog(warnings))) return
 		if (paths.length === 0) {
 			setStatus('statusDiscovery', 'No folders selected to create.', 'info')
 			return
 		}
-		runCreate(paths, 'statusDiscovery', btnCreateDiscovered)
+		await withButtonBusy(btnCreateDiscovered, async () => {
+			await runCreate(paths, 'statusDiscovery', btnCreateDiscovered)
+		})
 	}
 
 	const btnGenRules = $('btnGenRules')
 	if (btnGenRules) btnGenRules.onclick = () => {
 		const selected = state.discovered.filter(i => i.selected)
-		
-		// Check for account/rules mismatch
+		if (selected.length === 0) return
 		const mismatch = validateAccountRulesMatch()
-		const warningEl = $('accountMismatchWarning')
-		const overrideCheckbox = $('chkOverrideAccount')
-		
-		if (mismatch) {
-			// Show warning
-			$('mismatchAccountUri').textContent = mismatch.accountUri
-			$('mismatchRulesUri').textContent = mismatch.rulesUri
-			warningEl.style.display = 'block'
-			
-			// Enable override checkbox
-			overrideCheckbox.disabled = false
-			overrideCheckbox.title = "Check to use selected account URI instead of pasted rules URI"
-			
-			// Default to override checked for better UX
-			if (!overrideCheckbox.hasAttribute('data-user-set')) {
-				overrideCheckbox.checked = true
-			}
-		} else {
-			// Hide warning
-			warningEl.style.display = 'none'
-			overrideCheckbox.disabled = true
-			overrideCheckbox.title = "Enable when account mismatch is detected"
-		}
-		
-		// Determine which base URI to use
-		let base
-		if (mismatch && overrideCheckbox.checked) {
-			// User wants to override with selected account
-			base = state.accountBaseUri || "imap://REPLACE_ME"
-		} else {
-			// Use rules base URI if available, otherwise account
-			const rulesBase = RuleEngine.extractBaseUri($('pasteInput').value)
-			base = (rulesBase && rulesBase !== "imap://REPLACE_ME") ? rulesBase : (state.accountBaseUri || "imap://REPLACE_ME")
-		}
-		
-		// Use configured filter mask
+		const base = mismatch
+			? (state.accountBaseUri || "imap://REPLACE_ME")
+			: (() => {
+				const rulesBase = RuleEngine.extractBaseUri($('currentRules').value)
+				return (rulesBase && rulesBase !== "imap://REPLACE_ME") ? rulesBase : (state.accountBaseUri || "imap://REPLACE_ME")
+			})()
 		const typeMask = getFilterTypeMask()
 		const genBlock = RuleEngine.generateBlock(base)
-		$('genRulesOut').value = selected.map(i => genBlock(i.email, i.path, typeMask)).join('\n')
-		$('genRulesArea').scrollIntoView({ behavior: 'smooth' })
-	}
-	
-	// Track user interaction with override checkbox
-	const overrideCheckbox = $('chkOverrideAccount')
-	if (overrideCheckbox) {
-		overrideCheckbox.onchange = () => {
-			overrideCheckbox.setAttribute('data-user-set', 'true')
-			// Re-trigger rule generation to update with new setting
-			if ($('btnGenRules')) $('btnGenRules').click()
-		}
-	}
-
-	const btnDownload = $('btnDownload')
-	if (btnDownload) btnDownload.onclick = async () => {
-		let combined = ($('pasteInput').value || '') + '\n' + ($('genRulesOut').value || '')
-		
-		// Sort combined content if requested
-		if ($('chkSortDownload').checked) {
-			combined = RuleEngine.sortRawRules(combined)
-		}
-
-		const url = URL.createObjectURL(new Blob([combined], { type: 'text/plain' }))
-		await browserApi.downloads.download({ url, filename: 'msgFilterRules.dat', saveAs: true })
+		const generated = selected.map(i => genBlock(i.email, i.path, typeMask)).join('\n')
+		appendGeneratedRules(generated)
 	}
 })
