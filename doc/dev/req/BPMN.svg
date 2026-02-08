@@ -1,0 +1,96 @@
+<svg viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg">
+  <!-- Start Event -->
+  <circle cx="50" cy="100" r="20" fill="none" stroke="#000" stroke-width="2"/>
+  <circle cx="50" cy="100" r="17" fill="none" stroke="#000" stroke-width="2"/>
+  <text x="50" y="145" text-anchor="middle" font-size="12">Start</text>
+  
+  <!-- Task: Load Config -->
+  <rect x="120" y="70" width="120" height="60" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="180" y="100" text-anchor="middle" font-size="12" font-weight="bold">Load Config</text>
+  <text x="180" y="115" text-anchor="middle" font-size="10">[Storage]</text>
+  
+  <!-- Data: Config -->
+  <path d="M 300 70 L 330 70 L 340 85 L 340 130 L 300 130 Z M 330 70 L 330 85 L 340 85" fill="#f1f3f4" stroke="#666" stroke-width="1.5"/>
+  <text x="320" y="105" text-anchor="middle" font-size="11">Config</text>
+  
+  <!-- Task: Select Account -->
+  <rect x="120" y="180" width="120" height="60" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="180" y="205" text-anchor="middle" font-size="12" font-weight="bold">Select Account</text>
+  <text x="180" y="220" text-anchor="middle" font-size="10">[User Input]</text>
+  
+  <!-- Task: Scan Folders -->
+  <rect x="300" y="180" width="120" height="60" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="360" y="205" text-anchor="middle" font-size="12" font-weight="bold">Scan Folders</text>
+  <text x="360" y="220" text-anchor="middle" font-size="10">[API Call]</text>
+  
+  <!-- Data: Folders -->
+  <path d="M 480 180 L 510 180 L 520 195 L 520 240 L 480 240 Z M 510 180 L 510 195 L 520 195" fill="#e6f4ea" stroke="#666" stroke-width="1.5"/>
+  <text x="500" y="215" text-anchor="middle" font-size="11">Folders</text>
+  
+  <!-- Task: Upload Rules -->
+  <rect x="120" y="290" width="120" height="60" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="180" y="315" text-anchor="middle" font-size="12" font-weight="bold">Upload Rules</text>
+  <text x="180" y="330" text-anchor="middle" font-size="10">[User Input]</text>
+  
+  <!-- Task: Parse Rules -->
+  <rect x="300" y="290" width="120" height="60" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="360" y="315" text-anchor="middle" font-size="12" font-weight="bold">Parse Rules</text>
+  <text x="360" y="330" text-anchor="middle" font-size="10">[RuleEngine]</text>
+  
+  <!-- Data: Rules -->
+  <path d="M 480 290 L 510 290 L 520 305 L 520 350 L 480 350 Z M 510 290 L 510 305 L 520 305" fill="#fce8e6" stroke="#666" stroke-width="1.5"/>
+  <text x="500" y="325" text-anchor="middle" font-size="11">Rules</text>
+  
+  <!-- Task: Compare -->
+  <rect x="600" y="180" width="140" height="80" rx="5" fill="#fff3cd" stroke="#856404" stroke-width="2"/>
+  <text x="670" y="210" text-anchor="middle" font-size="12" font-weight="bold">Compare</text>
+  <text x="670" y="225" text-anchor="middle" font-size="12" font-weight="bold">Rules vs Folders</text>
+  <text x="670" y="245" text-anchor="middle" font-size="10">[Analysis Logic]</text>
+  
+  <!-- Task: Scan Messages -->
+  <rect x="600" y="310" width="140" height="60" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="670" y="335" text-anchor="middle" font-size="12" font-weight="bold">Scan Messages</text>
+  <text x="670" y="350" text-anchor="middle" font-size="10">[API Call]</text>
+  
+  <!-- Data: Senders -->
+  <path d="M 800 310 L 830 310 L 840 325 L 840 370 L 800 370 Z M 830 310 L 830 325 L 840 325" fill="#fff3cd" stroke="#666" stroke-width="1.5"/>
+  <text x="820" y="345" text-anchor="middle" font-size="11">Senders</text>
+  
+  <!-- Task: Generate Analysis -->
+  <rect x="600" y="430" width="140" height="80" rx="5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+  <text x="670" y="460" text-anchor="middle" font-size="12" font-weight="bold">Generate</text>
+  <text x="670" y="475" text-anchor="middle" font-size="12" font-weight="bold">Analysis Report</text>
+  <text x="670" y="495" text-anchor="middle" font-size="10">[Analysis]</text>
+  
+  <!-- Data: Analysis -->
+  <path d="M 800 430 L 830 430 L 840 445 L 840 510 L 800 510 Z M 830 430 L 830 445 L 840 445" fill="#e8f0fe" stroke="#666" stroke-width="1.5"/>
+  <text x="820" y="470" text-anchor="middle" font-size="11">Analysis</text>
+  
+  <!-- End Event -->
+  <circle cx="920" cy="470" r="20" fill="none" stroke="#000" stroke-width="4"/>
+  <text x="920" y="510" text-anchor="middle" font-size="12">End</text>
+  
+  <!-- Flows -->
+  <path d="M 70 100 L 120 100" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 240 100 L 300 100" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 180 130 L 180 180" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 240 210 L 300 210" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 420 210 L 480 210" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 180 240 L 180 290" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 240 320 L 300 320" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 420 320 L 480 320" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 520 210 L 600 210" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 520 320 L 560 320 L 560 340 L 600 340" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 740 340 L 800 340" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 670 260 L 670 310" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 670 370 L 670 430" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 740 470 L 800 470" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 840 470 L 900 470" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#000"/>
+    </marker>
+  </defs>
+</svg>

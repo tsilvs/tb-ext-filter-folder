@@ -234,6 +234,47 @@ const sendDeleteProgress = (port, current, total, path) => {
 	})
 }
 
+const SPECIAL_FOLDER_TYPES = new Set([
+	'inbox',
+	'trash',
+	'drafts',
+	'sent',
+	'junk',
+	'archive',
+	'templates',
+	'outbox',
+	'virtual'
+])
+
+const NON_RETRY_ERROR_MATCHES = [
+	'not permitted',
+	'permission',
+	'special folder',
+	'special',
+	'not found',
+	'does not exist',
+	'cannot delete',
+	'cant delete',
+	'cannot remove',
+	'cant remove'
+]
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+const shouldRetryDelete = (errorMessage) => {
+	const lower = (errorMessage || '').toLowerCase()
+	return !NON_RETRY_ERROR_MATCHES.some(fragment => lower.includes(fragment))
+}
+
+const verifyFolderDeleted = async (folderId) => {
+	try {
+		await messenger.folders.get(folderId)
+		return false
+	} catch (e) {
+		return true
+	}
+}
+
 /**
  * Delete folders from paths (deepest first)
  * @param {Object} data - Deletion data
@@ -257,11 +298,72 @@ async function deleteFolders(data, port) {
 			console.warn('Delete failed: folder not found', { path })
 			continue
 		}
+		if (folder.type && SPECIAL_FOLDER_TYPES.has(String(folder.type).toLowerCase())) {
+			results.failed.push({
+				path,
+				error: `Skipped special folder: ${folder.type}`,
+				folder: {
+					id: folder.id,
+					name: folder.name,
+					path: folder.path,
+					cleanPath: folder.cleanPath,
+					type: folder.type
+				}
+			})
+			console.warn('Delete skipped: special folder', {
+				path,
+				folderId: folder.id,
+				type: folder.type
+			})
+			continue
+		}
 		try {
 			await messenger.folders.delete(folder.id)
 			results.deleted.push(path)
 		} catch (e) {
 			const errorMessage = e?.message || 'Delete failed'
+			if (shouldRetryDelete(errorMessage)) {
+				await sleep(200)
+				try {
+					await messenger.folders.delete(folder.id)
+					results.deleted.push(path)
+					await sleep(50)
+					continue
+				} catch (retryError) {
+					const retryMessage = retryError?.message || errorMessage
+					const deleted = await verifyFolderDeleted(folder.id)
+					if (deleted) {
+						results.deleted.push(path)
+						continue
+					}
+					results.failed.push({
+						path,
+						error: `Retry failed: ${retryMessage}`,
+						folder: {
+							id: folder.id,
+							name: folder.name,
+							path: folder.path,
+							cleanPath: folder.cleanPath,
+							type: folder.type
+						}
+					})
+					console.error('Delete failed after retry', {
+						path,
+						folderId: folder.id,
+						name: folder.name,
+						cleanPath: folder.cleanPath,
+						type: folder.type,
+						error: retryMessage
+					})
+					continue
+				}
+			}
+
+			const deleted = await verifyFolderDeleted(folder.id)
+			if (deleted) {
+				results.deleted.push(path)
+				continue
+			}
 			results.failed.push({
 				path,
 				error: errorMessage,
@@ -281,6 +383,26 @@ async function deleteFolders(data, port) {
 				type: folder.type,
 				error: errorMessage
 			})
+		}
+		await sleep(50)
+	}
+
+	if (results.failed.length > 0) {
+		try {
+			const { folders: finalFolders } = await MailClient.scanAccount(accountId)
+			const finalSet = new Set(finalFolders.map(f => f.cleanPath.toLowerCase()))
+			const confirmedFailed = []
+			results.failed.forEach(item => {
+				if (!finalSet.has(item.path.toLowerCase())) {
+					results.deleted.push(item.path)
+					console.info('Delete verified after error', { path: item.path })
+				} else {
+					confirmedFailed.push(item)
+				}
+			})
+			results.failed = confirmedFailed
+		} catch (e) {
+			console.warn('Delete verification failed', { error: e?.message || e })
 		}
 	}
 
