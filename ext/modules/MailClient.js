@@ -3,8 +3,8 @@
  * Thunderbird API wrapper with pure functions and dependency injection
  */
 
-import { LIMITS, INBOX_FOLDER_NAME, ERROR_MESSAGES } from '../config/constants.js'
-import { toSet, fromSet } from '../utils/data.js'
+import { LIMITS, ERROR_MESSAGES } from "../config/constants.js";
+import { toSet, fromSet } from "../utils/data.js";
 
 // ============================================================================
 // Account Operations
@@ -18,20 +18,20 @@ import { toSet, fromSet } from '../utils/data.js'
 export const getAccount = (api) => async (accountId) => {
 	try {
 		// Strategy 1: Direct get
-		let account = await api.accounts.get(String(accountId))
-		
+		let account = await api.accounts.get(String(accountId));
+
 		// Strategy 2: List fallback if folders missing
 		if (!account || !account.folders || account.folders.length === 0) {
-			const all = await api.accounts.list()
-			account = all.find(a => String(a.id) === String(accountId))
+			const all = await api.accounts.list();
+			account = all.find((a) => String(a.id) === String(accountId));
 		}
-		
-		return account || null
+
+		return account || null;
 	} catch (e) {
-		console.error(ERROR_MESSAGES.GET_ACCOUNT_FAILED, e)
-		return null
+		console.error(ERROR_MESSAGES.GET_ACCOUNT_FAILED, e);
+		return null;
 	}
-}
+};
 
 /**
  * List all IMAP accounts
@@ -40,13 +40,13 @@ export const getAccount = (api) => async (accountId) => {
  */
 export const listImapAccounts = async (api) => {
 	try {
-		const accounts = await api.accounts.list()
-		return accounts.filter(a => a.type === 'imap')
+		const accounts = await api.accounts.list();
+		return accounts.filter((a) => a.type === "imap");
 	} catch (e) {
-		console.error(ERROR_MESSAGES.LIST_ACCOUNTS_FAILED, e)
-		return []
+		console.error(ERROR_MESSAGES.LIST_ACCOUNTS_FAILED, e);
+		return [];
 	}
-}
+};
 
 // ============================================================================
 // Folder Operations
@@ -62,10 +62,10 @@ const createFolderItem = (folder, depth = 0) => ({
 	id: String(folder.id),
 	name: folder.name,
 	path: folder.path,
-	cleanPath: (folder.path || '').replace(/^\/+/, ''),
+	cleanPath: (folder.path || "").replace(/^\/+/, ""),
 	type: folder.type,
-	depth
-})
+	depth,
+});
 
 /**
  * Recursively traverse folder tree
@@ -77,26 +77,26 @@ const createFolderItem = (folder, depth = 0) => ({
  * @returns {Promise<void>}
  */
 const traverseFolder = async (api, folder, depth, folders, stats) => {
-	if (!folder || !folder.id) return
-	
-	const item = createFolderItem(folder, depth)
-	folders.push(item)
-	
+	if (!folder || !folder.id) return;
+
+	const item = createFolderItem(folder, depth);
+	folders.push(item);
+
 	try {
-		const subs = await api.folders.getSubFolders(item.id)
+		const subs = await api.folders.getSubFolders(item.id);
 		if (subs && subs.length > 0) {
 			// Parallel recursion for performance
 			await Promise.all(
-				subs.map(sub => traverseFolder(api, sub, depth + 1, folders, stats))
-			)
+				subs.map((sub) => traverseFolder(api, sub, depth + 1, folders, stats)),
+			);
 		} else {
-			stats.leafs++
+			stats.leafs++;
 		}
 	} catch (e) {
 		// Permission errors on special folders - count as leaf
-		stats.leafs++
+		stats.leafs++;
 	}
-}
+};
 
 /**
  * Get root folders from account
@@ -104,12 +104,12 @@ const traverseFolder = async (api, folder, depth, folders, stats) => {
  * @returns {Array} Array of root folders
  */
 const getRootFolders = (account) => {
-	let roots = account.folders
+	let roots = account.folders;
 	if ((!roots || roots.length === 0) && account.rootFolder) {
-		roots = [account.rootFolder]
+		roots = [account.rootFolder];
 	}
-	return roots || []
-}
+	return roots || [];
+};
 
 /**
  * Scan account for all folders recursively
@@ -117,30 +117,30 @@ const getRootFolders = (account) => {
  * @returns {Function} Function accepting accountId
  */
 export const scanAccount = (api) => async (accountId) => {
-	const account = await getAccount(api)(accountId)
-	
+	const account = await getAccount(api)(accountId);
+
 	if (!account) {
-		return { folders: [], total: 0, leafs: 0 }
+		return { folders: [], total: 0, leafs: 0 };
 	}
-	
-	const folders = []
-	const stats = { leafs: 0 }
-	const roots = getRootFolders(account)
-	
+
+	const folders = [];
+	const stats = { leafs: 0 };
+	const roots = getRootFolders(account);
+
 	if (roots.length > 0) {
 		await Promise.all(
-			roots.map(root => traverseFolder(api, root, 0, folders, stats))
-		)
+			roots.map((root) => traverseFolder(api, root, 0, folders, stats)),
+		);
 	} else {
-		console.warn(ERROR_MESSAGES.NO_ACCOUNT, account)
+		console.warn(ERROR_MESSAGES.NO_ACCOUNT, account);
 	}
-	
+
 	return {
 		folders,
 		total: folders.length,
-		leafs: stats.leafs
-	}
-}
+		leafs: stats.leafs,
+	};
+};
 
 /**
  * Resolve a root folder by cleanPath
@@ -149,9 +149,13 @@ export const scanAccount = (api) => async (accountId) => {
  * @returns {Object|null} Root folder
  */
 export const resolveRootFolder = (folders, rootPath) => {
-	if (!rootPath) return null
-	return folders.find(folder => folder.cleanPath.toLowerCase() === rootPath.toLowerCase()) || null
-}
+	if (!rootPath) return null;
+	return (
+		folders.find(
+			(folder) => folder.cleanPath.toLowerCase() === rootPath.toLowerCase(),
+		) || null
+	);
+};
 
 /**
  * Compute folder stats scoped to a root path
@@ -159,39 +163,45 @@ export const resolveRootFolder = (folders, rootPath) => {
  * @param {string} rootPath - Root clean path
  * @returns {Object} Stats { total, leafs, leafPaths }
  */
-export const computeFolderStats = (folders, rootPath = '') => {
-	const normalizedRoot = rootPath.replace(/\/+$/, '')
-	const rootPrefix = normalizedRoot ? `${normalizedRoot}/` : ''
+export const computeFolderStats = (folders, rootPath = "") => {
+	const normalizedRoot = rootPath.replace(/\/+$/, "");
+	const rootPrefix = normalizedRoot ? `${normalizedRoot}/` : "";
 
 	const scoped = normalizedRoot
-		? folders.filter(folder => folder.cleanPath === normalizedRoot || folder.cleanPath.startsWith(rootPrefix))
-		: folders
+		? folders.filter(
+				(folder) =>
+					folder.cleanPath === normalizedRoot ||
+					folder.cleanPath.startsWith(rootPrefix),
+			)
+		: folders;
 
-	const scopedSet = new Set(scoped.map(folder => folder.cleanPath.toLowerCase()))
-	const childrenMap = new Map()
+	const scopedSet = new Set(
+		scoped.map((folder) => folder.cleanPath.toLowerCase()),
+	);
+	const childrenMap = new Map();
 
-	scoped.forEach(folder => {
-		const parts = folder.cleanPath.split('/')
+	scoped.forEach((folder) => {
+		const parts = folder.cleanPath.split("/");
 		if (parts.length > 1) {
-			const parentPath = parts.slice(0, -1).join('/').toLowerCase()
+			const parentPath = parts.slice(0, -1).join("/").toLowerCase();
 			if (scopedSet.has(parentPath)) {
-				const list = childrenMap.get(parentPath) || []
-				list.push(folder.cleanPath)
-				childrenMap.set(parentPath, list)
+				const list = childrenMap.get(parentPath) || [];
+				list.push(folder.cleanPath);
+				childrenMap.set(parentPath, list);
 			}
 		}
-	})
+	});
 
 	const leafPaths = scoped
-		.filter(folder => !childrenMap.has(folder.cleanPath.toLowerCase()))
-		.map(folder => folder.cleanPath)
+		.filter((folder) => !childrenMap.has(folder.cleanPath.toLowerCase()))
+		.map((folder) => folder.cleanPath);
 
 	return {
 		total: scoped.length,
 		leafs: leafPaths.length,
-		leafPaths
-	}
-}
+		leafPaths,
+	};
+};
 
 /**
  * Create a folder
@@ -199,8 +209,8 @@ export const computeFolderStats = (folders, rootPath = '') => {
  * @returns {Function} Function accepting (parentId, name)
  */
 export const createFolder = (api) => (parentId, name) => {
-	return api.folders.create(String(parentId), name)
-}
+	return api.folders.create(String(parentId), name);
+};
 
 /**
  * Find inbox folder from folder list
@@ -208,9 +218,9 @@ export const createFolder = (api) => (parentId, name) => {
  * @returns {Object|null} Inbox folder or first folder or null
  */
 export const findInboxFolder = (folders) => {
-	if (!folders || folders.length === 0) return null
-	return folders.find(f => f.type === 'inbox' || f.name === INBOX_FOLDER_NAME) || folders[0]
-}
+	if (!folders || folders.length === 0) return null;
+	return folders.find((f) => f.type === "inbox") || folders[0];
+};
 
 // ============================================================================
 // Message Operations
@@ -223,16 +233,16 @@ export const findInboxFolder = (folders) => {
  * @returns {string|null} Extracted email or null
  */
 const extractEmail = (author) => {
-	if (!author) return null
-	
-	const match = author.match(/<([^>]+)>/) || [null, author]
+	if (!author) return null;
+
+	const match = author.match(/<([^>]+)>/) || [null, author];
 	const email = (match[1] || match[0])
-		.replace(/["']/g, '')
+		.replace(/["']/g, "")
 		.trim()
-		.toLowerCase()
-	
-	return email.includes('@') ? email : null
-}
+		.toLowerCase();
+
+	return email.includes("@") ? email : null;
+};
 
 /**
  * Check if email should be excluded
@@ -241,45 +251,47 @@ const extractEmail = (author) => {
  * @returns {boolean} True if should be excluded
  */
 const shouldExcludeEmail = (selfEmails, email) => {
-	return !email || selfEmails.has(email)
-}
+	return !email || selfEmails.has(email);
+};
 
 /**
  * Get unique sender emails from folder
  * @param {Object} api - Messenger API object
  * @returns {Function} Function accepting (folderId, limit, selfIdentities)
  */
-export const getSenders = (api) => async (folderId, limit, selfIdentities = []) => {
-	const messageLimit = limit || LIMITS.DEFAULT_SCAN_LIMIT
-	const selfEmails = toSet(
-		selfIdentities.map(i => (i.email || '').toLowerCase())
-	)
-	const senders = new Set()
+export const getSenders =
+	(api) =>
+	async (folderId, limit, selfIdentities = []) => {
+		const messageLimit = limit || LIMITS.DEFAULT_SCAN_LIMIT;
+		const selfEmails = toSet(
+			selfIdentities.map((i) => (i.email || "").toLowerCase()),
+		);
+		const senders = new Set();
 
-	let page = await api.messages.list(String(folderId))
-	let collected = 0
+		let page = await api.messages.list(String(folderId));
+		let collected = 0;
 
-	while (page && collected < messageLimit) {
-		const batch = page.messages || []
-		for (const msg of batch) {
-			if (collected >= messageLimit) break
+		while (page && collected < messageLimit) {
+			const batch = page.messages || [];
+			for (const msg of batch) {
+				if (collected >= messageLimit) break;
 
-			const email = extractEmail(msg.author)
-			if (!shouldExcludeEmail(selfEmails, email)) {
-				senders.add(email)
+				const email = extractEmail(msg.author);
+				if (!shouldExcludeEmail(selfEmails, email)) {
+					senders.add(email);
+				}
+				collected++;
 			}
-			collected++
+
+			if (page.id && collected < messageLimit) {
+				page = await api.messages.continueList(page.id);
+			} else {
+				break;
+			}
 		}
 
-		if (page.id && collected < messageLimit) {
-			page = await api.messages.continueList(page.id)
-		} else {
-			break
-		}
-	}
-
-	return fromSet(senders)
-}
+		return fromSet(senders);
+	};
 
 // ============================================================================
 // Folder Hierarchy Operations
@@ -291,10 +303,8 @@ export const getSenders = (api) => async (folderId, limit, selfIdentities = []) 
  * @returns {Map} Map of cleanPath (lowercase) to folder
  */
 export const buildFolderMap = (folders) => {
-	return new Map(
-		folders.map(f => [f.cleanPath.toLowerCase(), f])
-	)
-}
+	return new Map(folders.map((f) => [f.cleanPath.toLowerCase(), f]));
+};
 
 /**
  * Sort paths by depth (for hierarchical creation)
@@ -303,11 +313,11 @@ export const buildFolderMap = (folders) => {
  */
 export const sortPathsByDepth = (paths) => {
 	return [...paths].sort((a, b) => {
-		const depthA = a.split('/').length
-		const depthB = b.split('/').length
-		return depthA - depthB
-	})
-}
+		const depthA = a.split("/").length;
+		const depthB = b.split("/").length;
+		return depthA - depthB;
+	});
+};
 
 /**
  * Get parent path from path
@@ -315,10 +325,10 @@ export const sortPathsByDepth = (paths) => {
  * @returns {string|null} Parent path or null if root
  */
 export const getParentPath = (path) => {
-	const parts = path.split('/')
-	if (parts.length <= 1) return null
-	return parts.slice(0, -1).join('/')
-}
+	const parts = path.split("/");
+	if (parts.length <= 1) return null;
+	return parts.slice(0, -1).join("/");
+};
 
 /**
  * Check if folder exists in map (case-insensitive)
@@ -326,8 +336,8 @@ export const getParentPath = (path) => {
  * @returns {Function} Function accepting path
  */
 export const folderExists = (folderMap) => (path) => {
-	return folderMap.has(path.toLowerCase())
-}
+	return folderMap.has(path.toLowerCase());
+};
 
 // ============================================================================
 // Legacy Namespace Export (for backward compatibility during migration)
@@ -338,7 +348,7 @@ export const MailClient = {
 	scanAccount: scanAccount(messenger),
 	getSenders: getSenders(messenger),
 	createFolder: createFolder(messenger),
-	
+
 	// Additional exports
 	getAccount: getAccount(messenger),
 	listImapAccounts: () => listImapAccounts(messenger),
@@ -348,5 +358,5 @@ export const MailClient = {
 	buildFolderMap,
 	sortPathsByDepth,
 	getParentPath,
-	folderExists
-}
+	folderExists,
+};

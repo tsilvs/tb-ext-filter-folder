@@ -1,7 +1,7 @@
 # Filter Folder Creator
 
 > [!IMPORTANT]
-> Made with ChatFPT 5.2, Claude Sonnet 4.5 and Gemini 3
+> Made with ChatGPT 5.2, Claude Sonnet 4.5 and Gemini 3
 >
 > I plan to rewrite it manually later.
 
@@ -24,7 +24,7 @@ More in [BRD](./doc/dev/req/BRD.md)
 #### Option A: Load Temporary Add-on (Testing)
 
 1. Open Thunderbird
-2. Go to `Tools`->` Developer Tools `->`Debug Add-ons` (or `about:debugging`)
+2. Go to `Tools`->`Developer Tools`->`Debug Add-ons` (or `about:debugging`)
 3. Click "This Thunderbird"
 4. Click "Load Temporary Add-on"
 5. Select `manifest.json` from your folder
