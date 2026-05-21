@@ -125,22 +125,47 @@ const updateStat = (id, val) => {
 	if (el) el.textContent = val;
 };
 
+const ACTION_IDS = [
+	"btnGenMissingInbox", "btnGenMissingLeaf", "btnGenMismatched",
+	"btnDeleteEmptyFolders", "btnDeleteInvalidRules",
+	"btnCreateMissing", "btnCreateMissingInline",
+	"btnCreateDiscovered", "btnGenRules",
+	"btnDownloadRules", "btnSortInput", "btnApplyDefaults", "btnInfer",
+];
+// Only saved once at the start of any processing run; cleared on idle.
+const _actionDisabledCache = new Map();
+
 function renderProcessing(processing) {
 	const isFolders = !!processing.folders;
 	const isDiscovery = !!processing.discovery;
+	const isAny = isFolders || isDiscovery;
 
 	const analysisSection = $("analysisResults");
-	if (analysisSection) {
-		analysisSection.classList.toggle("is-processing", isFolders);
-	}
+	if (analysisSection) analysisSection.classList.toggle("is-processing", isFolders);
 	const discoverySection = $("contentDiscovery");
-	if (discoverySection) {
-		discoverySection.classList.toggle("is-processing", isDiscovery);
-	}
+	if (discoverySection) discoverySection.classList.toggle("is-processing", isDiscovery);
 	const btnAnalyze = $("btnAnalyze");
-	if (btnAnalyze) btnAnalyze.disabled = isFolders || isDiscovery;
+	if (btnAnalyze) btnAnalyze.disabled = isAny;
 	const btnScan = $("btnScan");
-	if (btnScan) btnScan.disabled = isFolders || isDiscovery;
+	if (btnScan) btnScan.disabled = isAny;
+
+	if (isAny) {
+		ACTION_IDS.forEach((id) => {
+			const btn = $(id);
+			if (!btn) return;
+			if (!_actionDisabledCache.has(id)) _actionDisabledCache.set(id, btn.disabled);
+			btn.disabled = true;
+		});
+	} else {
+		ACTION_IDS.forEach((id) => {
+			const btn = $(id);
+			if (!btn) return;
+			if (_actionDisabledCache.has(id)) {
+				btn.disabled = _actionDisabledCache.get(id);
+				_actionDisabledCache.delete(id);
+			}
+		});
+	}
 }
 
 function renderConfig(config) {
@@ -777,8 +802,7 @@ const refreshFolderStats = (folders = store.getState().folders) => {
 	const mismatchEl = $("leafEmailMismatch");
 	if (mismatchEl) {
 		const ruleEmails = getUniqueRuleEmails();
-		const mismatch = ruleEmails.size !== stats.leafs;
-		if (mismatch && ruleEmails.size > 0) {
+		if (ruleEmails.size !== stats.leafs && (ruleEmails.size > 0 || stats.leafs > 0)) {
 			mismatchEl.textContent = `Leafs (${stats.leafs}) do not match unique rule emails (${ruleEmails.size}).`;
 			mismatchEl.style.display = "block";
 		} else {
@@ -841,6 +865,8 @@ function updateRuleStats(text) {
 
 	const btn = $("btnAnalyze");
 	if (btn) btn.disabled = !($("account").value && text);
+
+	refreshFolderStats();
 }
 
 const syncRuleState = (text) => {
@@ -940,6 +966,7 @@ async function runCreate(paths, statusId, btn) {
 				setStatus(statusId, msg.error, "error");
 				port.disconnect();
 				btn.disabled = false;
+				resolve();
 			}
 		});
 		port.postMessage({
@@ -986,6 +1013,7 @@ async function runDelete(paths, statusId, btn) {
 				setStatus(statusId, msg.error, "error");
 				port.disconnect();
 				btn.disabled = false;
+				resolve();
 			}
 		});
 		port.postMessage({ action: "delete", accountId, paths });
@@ -1376,51 +1404,61 @@ document.addEventListener("DOMContentLoaded", async () => {
 	const btnCreateMissing = $("btnCreateMissing");
 	if (btnCreateMissing)
 		btnCreateMissing.onclick = async () => {
-			await withButtonBusy(btnCreateMissing, async () => {
-				const warnings = collectPathWarnings(store.getState().missing, {
-					checkEncoding: false,
+			setProcessing(true, "folders");
+			try {
+				await withButtonBusy(btnCreateMissing, async () => {
+					const warnings = collectPathWarnings(store.getState().missing, {
+						checkEncoding: false,
+					});
+					if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
+						return;
+					if (
+						!store.getState().missing ||
+						store.getState().missing.length === 0
+					) {
+						setStatus("statusCreateMissing", browserApi.i18n.getMessage("noFoldersToCreate"), "info");
+						return;
+					}
+					await runCreate(
+						store.getState().missing,
+						"statusCreateMissing",
+						btnCreateMissing,
+					);
+					await $("btnAnalyze")?.click();
 				});
-				if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
-					return;
-				if (
-					!store.getState().missing ||
-					store.getState().missing.length === 0
-				) {
-					setStatus("statusCreateMissing", browserApi.i18n.getMessage("noFoldersToCreate"), "info");
-					return;
-				}
-				await runCreate(
-					store.getState().missing,
-					"statusCreateMissing",
-					btnCreateMissing,
-				);
-				await $("btnAnalyze")?.click();
-			});
+			} finally {
+				setProcessing(false, "folders");
+			}
 		};
 
 	const btnCreateMissingInline = $("btnCreateMissingInline");
 	if (btnCreateMissingInline)
 		btnCreateMissingInline.onclick = async () => {
-			await withButtonBusy(btnCreateMissingInline, async () => {
-				const warnings = collectPathWarnings(store.getState().missing, {
-					checkEncoding: false,
+			setProcessing(true, "folders");
+			try {
+				await withButtonBusy(btnCreateMissingInline, async () => {
+					const warnings = collectPathWarnings(store.getState().missing, {
+						checkEncoding: false,
+					});
+					if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
+						return;
+					if (
+						!store.getState().missing ||
+						store.getState().missing.length === 0
+					) {
+						setStatus("statusCreateMissingInline", browserApi.i18n.getMessage("noFoldersToCreate"), "info");
+						return;
+					}
+					await runCreate(
+						store.getState().missing,
+						"statusCreateMissingInline",
+						btnCreateMissingInline,
+					);
+					await $("btnAnalyze")?.click();
 				});
-				if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
-					return;
-				if (
-					!store.getState().missing ||
-					store.getState().missing.length === 0
-				) {
-					setStatus("statusCreateMissing", browserApi.i18n.getMessage("noFoldersToCreate"), "info");
-					return;
-				}
-				await runCreate(
-					store.getState().missing,
-					"statusCreateMissing",
-					btnCreateMissingInline,
-				);
-				await $("btnAnalyze")?.click();
-			});
+			} finally {
+				setProcessing(false, "folders");
+			}
 		};
 
 	const btnGenMissingInbox = $("btnGenMissingInbox");
@@ -1518,6 +1556,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 	const btnDeleteEmptyFolders = $("btnDeleteEmptyFolders");
 	if (btnDeleteEmptyFolders)
 		btnDeleteEmptyFolders.onclick = async () => {
+			setProcessing(true, "folders");
+			try {
 			await withButtonBusy(btnDeleteEmptyFolders, async () => {
 				const emptyLeafFolders =
 					store.getState().analysis?.emptyLeafFolders || [];
@@ -1554,6 +1594,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 				);
 				await $("btnAnalyze")?.click();
 			});
+			} finally {
+				setProcessing(false, "folders");
+			}
 		};
 
 	const btnDeleteInvalidRules = $("btnDeleteInvalidRules");
@@ -1561,32 +1604,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 		btnDeleteInvalidRules.onclick = async () => {
 			if (!store.getState().analysis) return;
 			setProcessing(true, "folders");
-			await withButtonBusy(btnDeleteInvalidRules, async () => {
-				const invalidEmails = new Set(
-					store.getState().analysis.invalidRules.map((item) => item.email),
-				);
-				const currentRules = $("currentRules");
-				if (currentRules) {
-					const filtered = RuleEngine.parse(currentRules.value)
-						.filter((rule) =>
-							rule.emails.every((email) => !invalidEmails.has(email)),
-						)
-						.map((rule) => {
-							const genBlock = RuleEngine.generateBlock(
-								store.getState().accountBaseUri || PLACEHOLDER_URI,
-							);
-							return rule.emails
-								.map((email) =>
-									genBlock(email, rule.path, getFilterTypeMask()),
-								)
-								.join("\n");
-						});
-					currentRules.value = filtered.join("\n");
-					syncRuleState(currentRules.value);
-				}
-				await $("btnAnalyze")?.click();
-			});
-			setProcessing(false, "folders");
+			try {
+				await withButtonBusy(btnDeleteInvalidRules, async () => {
+					const invalidEmails = new Set(
+						store.getState().analysis.invalidRules.map((item) => item.email),
+					);
+					const currentRules = $("currentRules");
+					if (currentRules) {
+						// Filter at raw-block level to preserve each rule's original type/attributes.
+						const content = currentRules.value;
+						const marker = 'name="';
+						const firstIdx = content.indexOf(marker);
+						if (firstIdx !== -1) {
+							const header = content.substring(0, firstIdx);
+							const blocks = content.substring(firstIdx)
+								.split(/(?=name=")/g)
+								.map((block) => block.trim())
+								.filter(Boolean)
+								.filter((block) => {
+									const emails = RuleEngine.extractEmailsFromBlock(block);
+									return !emails.some((email) => invalidEmails.has(email));
+								});
+							currentRules.value = header + blocks.join("\n");
+						} else {
+							currentRules.value = "";
+						}
+						syncRuleState(currentRules.value);
+						setStatus("statusDeleteInvalidRules", `Removed ${invalidEmails.size} invalid rule(s).`, "success");
+					}
+					await $("btnAnalyze")?.click();
+				});
+			} finally {
+				setProcessing(false, "folders");
+			}
 		};
 
 	const btnLeafDebug = $("btnLeafDebug");
@@ -1746,9 +1796,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 				);
 				return;
 			}
-			await withButtonBusy(btnCreateDiscovered, async () => {
-				await runCreate(paths, "statusDiscovery", btnCreateDiscovered);
-			});
+			setProcessing(true, "discovery");
+			try {
+				await withButtonBusy(btnCreateDiscovered, async () => {
+					await runCreate(paths, "statusDiscovery", btnCreateDiscovered);
+				});
+			} finally {
+				setProcessing(false, "discovery");
+			}
 		};
 
 	const btnGenRules = $("btnGenRules");

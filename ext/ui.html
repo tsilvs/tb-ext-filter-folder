@@ -64,7 +64,7 @@
 							 accept=".dat,text/plain">
 
 				<textarea id="currentRules"
-								class="collapsed"
+								rows="15"
 								data-i18n-placeholder="pastePlaceholder"></textarea>
 
 				<div class="meta-info">
@@ -82,6 +82,13 @@
 										type="button"
 										class="link-button"
 										data-i18n="applyDefaultsBtn"></button>
+
+						<span class="sep">•</span>
+
+						<button id="btnDownloadRules"
+										type="button"
+										class="link-button"
+										data-i18n="downloadRules"></button>
 					</div>
 
 					<span id="ruleCountDisplay"></span>
@@ -185,12 +192,8 @@
 											disabled
 											data-busy-text="Creating folders..."
 											data-i18n="createMissingFoldersBtn"></button>
+								<aside class="status-area inline" id="statusCreateMissingInline" aria-live="polite"></aside>
 							</aside>
-						</div>
-						<div class="actions" style="margin-top: 8px;">
-							<button id="btnDownloadRules"
-									class="secondary"
-									data-i18n="downloadRules"></button>
 						</div>
 					<div id="leafEmailMismatch"
 							 class="status warning"
@@ -234,6 +237,7 @@
 							</div>
 							<output class="stat-value" id="countInvalidRules">—</output>
 							<button id="btnDeleteInvalidRules" class="secondary" disabled data-busy-text="Deleting invalid rules...">Delete Invalid</button>
+							<aside class="status-area inline" id="statusDeleteInvalidRules" aria-live="polite"></aside>
 						</aside>
 					</div>
 

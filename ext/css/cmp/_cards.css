@@ -14,13 +14,8 @@ article,
 	box-shadow: var(--shadow-md);
 }
 
-.shared-config textarea.collapsed {
-	height: var(--input-height);
-	min-height: var(--input-height);
-}
-
-.shared-config textarea:focus {
-	height: 120px;
+.shared-config textarea {
+	min-height: 240px;
 }
 
 .meta-info {
