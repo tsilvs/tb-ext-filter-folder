@@ -105,8 +105,7 @@ export const buildFullUri = (baseUri) => (path) => {
  */
 export const extractEmailsFromBlock = (block) => {
 	const emails = [];
-	const condRegex = new RegExp(REGEX_PATTERNS.EMAIL_CONDITION.source, "gi");
-	// NOTE: Reconstructing with 'gi' flags to avoid stateful regex issues across calls
+	const condRegex = new RegExp(REGEX_PATTERNS.EMAIL_CONDITION, "gi");
 	let match;
 
 	while ((match = condRegex.exec(block)) !== null) {
@@ -462,7 +461,7 @@ export const getUniqueEmails = (rules) => {
 };
 
 // ============================================================================
-// Legacy Namespace Export (for backward compatibility during migration)
+// Namespace Export
 // ============================================================================
 
 export const RuleEngine = {

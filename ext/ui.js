@@ -953,7 +953,11 @@ async function runCreate(paths, statusId, btn) {
 
 async function runDelete(paths, statusId, btn) {
 	btn.disabled = true;
-	setStatus(statusId, "Deleting folders...", "progress");
+	setStatus(
+		statusId,
+		browserApi.i18n.getMessage("deletingFolders"),
+		"progress",
+	);
 
 	const port = browserApi.runtime.connect({ name: PORT_NAMES.DELETE_FOLDERS });
 	const accountId = $("account").value;
@@ -969,7 +973,10 @@ async function runDelete(paths, statusId, btn) {
 			} else if (msg.type === MESSAGE_TYPES.COMPLETE) {
 				setStatus(
 					statusId,
-					`Deleted ${msg.results.deleted.length}, failed ${msg.results.failed.length}`,
+					browserApi.i18n.getMessage("deletedStatus", [
+						msg.results.deleted.length,
+						msg.results.failed.length,
+					]),
 					"success",
 				);
 				port.disconnect();
@@ -1239,7 +1246,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			if (!validated.valid) {
 				setStatus(
 					"statusFolders",
-					"Target root was invalid and was reset to Account Root.",
+					browserApi.i18n.getMessage("targetRootInvalid"),
 					"warning",
 				);
 				$("targetRoot").value = "";
@@ -1304,466 +1311,467 @@ document.addEventListener("DOMContentLoaded", async () => {
 			setTimeout(() => (btn.textContent = originalText), 1000);
 		}
 
-		// Analyze
-		const formAnalyze = $("formAnalyze");
-		if (formAnalyze)
-			formAnalyze.onsubmit = async (e) => {
-				e.preventDefault();
-				const btn = $("btnAnalyze");
-				btn.disabled = true;
-				setProcessing(true, "folders");
-				setStatus(
-					"statusFolders",
-					browserApi.i18n.getMessage("analyzing"),
-					"progress",
-				);
+	};
 
-				// Use store.getState().config OR the checkbox (which is synced via listener, but checking DOM is safer for immediate user override)
-				const currentMerge = $("mergeCase").checked;
-				const currentRoot = getCurrentRoot();
-				const sourceSelection = getSelectedFolderMeta($("scanSource"));
-				const sourceFolder = sourceSelection
-					? store
-							.getState()
-							.folders.find(
-								(folder) => String(folder.id) === String(sourceSelection.id),
-							)
-					: null;
-				try {
-					const result = await runAnalysis(
-						$("account").value,
-						$("currentRules").value,
-						{
-							mergeCase: currentMerge,
-							rootPath: currentRoot,
-							folders: store.getState().folders,
-							scanLimit: store.getState().config.scanLimit,
-							sourceFolder,
-						},
-					);
-					store.setState(
-						(prev) => ({
-							missing: result.missing,
-							analysis: result.analysis,
-							analysisMeta: result.analysisMeta,
-						}),
-						{ type: "analysis:results" },
-					);
-					updateStat("resLeafs", result.stats.leafs);
-					updateStat("resMissing", result.scopedMissing.length);
-					setStatus(
-						"statusFolders",
-						browserApi.i18n.getMessage("done"),
-						"success",
-					);
-				} catch (error) {
-					setStatus("statusFolders", normalizeErrorMessage(error), "error");
-				} finally {
-					btn.disabled = false;
-					setProcessing(false, "folders");
-				}
-			};
-
-		const btnCreateMissing = $("btnCreateMissing");
-		if (btnCreateMissing)
-			btnCreateMissing.onclick = async () => {
-				await withButtonBusy(btnCreateMissing, async () => {
-					const warnings = collectPathWarnings(store.getState().missing, {
-						checkEncoding: false,
-					});
-					if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
-						return;
-					if (
-						!store.getState().missing ||
-						store.getState().missing.length === 0
-					) {
-						setStatus("statusCreateMissing", "No folders to create.", "info");
-						return;
-					}
-					await runCreate(
-						store.getState().missing,
-						"statusCreateMissing",
-						btnCreateMissing,
-					);
-					await $("btnAnalyze")?.click();
-				});
-			};
-
-		const btnCreateMissingInline = $("btnCreateMissingInline");
-		if (btnCreateMissingInline)
-			btnCreateMissingInline.onclick = async () => {
-				await withButtonBusy(btnCreateMissingInline, async () => {
-					const warnings = collectPathWarnings(store.getState().missing, {
-						checkEncoding: false,
-					});
-					if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
-						return;
-					if (
-						!store.getState().missing ||
-						store.getState().missing.length === 0
-					) {
-						setStatus("statusCreateMissing", "No folders to create.", "info");
-						return;
-					}
-					await runCreate(
-						store.getState().missing,
-						"statusCreateMissing",
-						btnCreateMissingInline,
-					);
-					await $("btnAnalyze")?.click();
-				});
-			};
-
-		const btnGenMissingInbox = $("btnGenMissingInbox");
-		if (btnGenMissingInbox)
-			btnGenMissingInbox.onclick = async () => {
-				if (!store.getState().analysis) return;
-				setProcessing(true, "folders");
-				await withButtonBusy(btnGenMissingInbox, async () => {
-					const root = getCurrentRoot();
-					const genBlock = RuleEngine.generateBlock(
-						store.getState().accountBaseUri || PLACEHOLDER_URI,
-					);
-					const rules = store
-						.getState()
-						.analysis.missingInboxRules.map((email) => {
-							const suffix = RuleEngine.emailToPath(email);
-							const path = root ? `${root}/${suffix}` : suffix;
-							return genBlock(email, path, getFilterTypeMask());
-						});
-					appendGeneratedRules(rules.join("\n"));
-					await $("btnAnalyze")?.click();
-				});
-				setProcessing(false, "folders");
-			};
-
-		const btnDownloadRules = $("btnDownloadRules");
-		if (btnDownloadRules)
-			btnDownloadRules.onclick = async () => {
-				const content = $("currentRules")?.value || "";
-				if (!content.trim()) {
-					setStatus("statusFolders", "No rules to download.", "info");
-					return;
-				}
-				const sorted = RuleEngine.sortRawRules(content);
-				const url = URL.createObjectURL(
-					new Blob([sorted], { type: "text/plain" }),
-				);
-				await browserApi.downloads.download({
-					url,
-					filename: "msgFilterRules.dat",
-					saveAs: true,
-				});
-			};
-
-		const btnGenMissingLeaf = $("btnGenMissingLeaf");
-		if (btnGenMissingLeaf)
-			btnGenMissingLeaf.onclick = async () => {
-				if (!store.getState().analysis) return;
-				setProcessing(true, "folders");
-				await withButtonBusy(btnGenMissingLeaf, async () => {
-					const genBlock = RuleEngine.generateBlock(
-						store.getState().accountBaseUri || PLACEHOLDER_URI,
-					);
-					const rules = store
-						.getState()
-						.analysis.missingLeafRules.map((item) => {
-							return genBlock(
-								item.email,
-								item.expectedPath,
-								getFilterTypeMask(),
-							);
-						});
-					appendGeneratedRules(rules.join("\n"));
-					await $("btnAnalyze")?.click();
-				});
-				setProcessing(false, "folders");
-			};
-
-		const btnGenMismatched = $("btnGenMismatched");
-		if (btnGenMismatched)
-			btnGenMismatched.onclick = async () => {
-				if (!store.getState().analysis) return;
-				setProcessing(true, "folders");
-				await withButtonBusy(btnGenMismatched, async () => {
-					const genBlock = RuleEngine.generateBlock(
-						store.getState().accountBaseUri || PLACEHOLDER_URI,
-					);
-					const rules = store
-						.getState()
-						.analysis.mismatchedFolders.map((item) => {
-							return genBlock(
-								item.email,
-								item.expectedPath,
-								getFilterTypeMask(),
-							);
-						});
-					appendGeneratedRules(rules.join("\n"));
-					await $("btnAnalyze")?.click();
-				});
-				setProcessing(false, "folders");
-			};
-
-		// Rules-to-missing-folders removed
-
-		const btnDeleteEmptyFolders = $("btnDeleteEmptyFolders");
-		if (btnDeleteEmptyFolders)
-			btnDeleteEmptyFolders.onclick = async () => {
-				await withButtonBusy(btnDeleteEmptyFolders, async () => {
-					const emptyLeafFolders =
-						store.getState().analysis?.emptyLeafFolders || [];
-					if (emptyLeafFolders.length === 0) {
-						setStatus(
-							"statusDeleteEmpty",
-							"No empty folders to delete.",
-							"info",
-						);
-						return;
-					}
-					const warnings = collectPathWarnings(emptyLeafFolders, {
-						checkEncoding: false,
-					});
-					if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
-						return;
-					const results = await runDelete(
-						emptyLeafFolders,
-						"statusDeleteEmpty",
-						btnDeleteEmptyFolders,
-					);
-					store.setState(
-						(prev) => ({
-							analysisMeta: {
-								...(prev.analysisMeta || {}),
-								deleteEmpty: {
-									deleted: results?.deleted?.length || 0,
-									failed: results?.failed?.length || 0,
-									failures: results?.failed || [],
-								},
-							},
-						}),
-						{ type: "analysis:delete-empty" },
-					);
-					await $("btnAnalyze")?.click();
-				});
-			};
-
-		const btnDeleteInvalidRules = $("btnDeleteInvalidRules");
-		if (btnDeleteInvalidRules)
-			btnDeleteInvalidRules.onclick = async () => {
-				if (!store.getState().analysis) return;
-				setProcessing(true, "folders");
-				await withButtonBusy(btnDeleteInvalidRules, async () => {
-					const invalidEmails = new Set(
-						store.getState().analysis.invalidRules.map((item) => item.email),
-					);
-					const currentRules = $("currentRules");
-					if (currentRules) {
-						const filtered = RuleEngine.parse(currentRules.value)
-							.filter((rule) =>
-								rule.emails.every((email) => !invalidEmails.has(email)),
-							)
-							.map((rule) => {
-								const genBlock = RuleEngine.generateBlock(
-									store.getState().accountBaseUri || PLACEHOLDER_URI,
-								);
-								return rule.emails
-									.map((email) =>
-										genBlock(email, rule.path, getFilterTypeMask()),
-									)
-									.join("\n");
-							});
-						currentRules.value = filtered.join("\n");
-						syncRuleState(currentRules.value);
-					}
-					await $("btnAnalyze")?.click();
-				});
-				setProcessing(false, "folders");
-			};
-
-		const btnLeafDebug = $("btnLeafDebug");
-		if (btnLeafDebug)
-			btnLeafDebug.onclick = () => {
-				const panel = $("leafDebugPanel");
-				if (!panel) return;
-				panel.classList.remove("hidden");
-				const isOpening = !panel.open;
-				panel.open = isOpening;
-			};
-
-		const leafDebugPanel = $("leafDebugPanel");
-		if (leafDebugPanel) {
-			leafDebugPanel.addEventListener("toggle", () => {
-				if (leafDebugPanel.open) {
-					const stats = MailClient.computeFolderStats(
-						store.getState().folders,
-						getCurrentRoot(),
-					);
-					renderLeafDebug(stats);
-				}
-			});
-		}
-
-		// Discovery
-		$("btnInfer").onclick = () => {
-			const root = inferRootFromFolders();
-			if (root) {
-				$("targetRoot").value = root;
-				refreshFolderStats();
-				setStatus(
-					"statusDiscovery",
-					browserApi.i18n.getMessage("rootInferred", [root]),
-					"success",
-				);
-				saveAccountPreferences();
-			} else {
-				setStatus(
-					"statusDiscovery",
-					browserApi.i18n.getMessage("rootNotFound"),
-					"warning",
-				);
-			}
-		};
-
-		$("formDiscovery").onsubmit = async (e) => {
+	// Analyze
+	const formAnalyze = $("formAnalyze");
+	if (formAnalyze)
+		formAnalyze.onsubmit = async (e) => {
 			e.preventDefault();
-			setProcessing(true, "discovery");
-			setStatus("statusDiscovery", "Scanning...", "progress");
-			let emails;
-			try {
-				const sourceSelection = getSelectedFolderMeta($("scanSource"));
-				const rootFolder = sourceSelection
-					? store
-							.getState()
-							.folders.find(
-								(folder) => String(folder.id) === String(sourceSelection.id),
-							)
-					: store
-							.getState()
-							.folders.find((folder) => folder.type === "inbox") ||
-						store.getState().folders[0];
-				if (!rootFolder) {
-					setStatus("statusDiscovery", "No source folder selected.", "warning");
-					return;
-				}
-				const scanResult = await sendRuntimeMessage(
-					{
-						action: "scanFolderSenders",
-						folderId: String(rootFolder.id),
-						limit: store.getState().config.scanLimit,
-					},
-					"statusDiscovery",
-				);
-				emails = scanResult.senders || [];
-			} catch (error) {
-				setProcessing(false, "discovery");
-				return;
-			}
-
-			const existingEmails = new Set(
-				RuleEngine.parse($("currentRules").value).flatMap((r) => r.emails),
-			);
-			const root = getCurrentRoot();
-
-			store.setState(
-				{
-					discovered: emails
-						.filter((e) => !existingEmails.has(e))
-						.map((email) => {
-							const suffix = RuleEngine.emailToPath(email);
-							return suffix
-								? {
-										email,
-										path: root ? `${root}/${suffix}` : suffix,
-										selected: true,
-									}
-								: null;
-						})
-						.filter(Boolean),
-				},
-				{ type: "discovery:results" },
-			);
-
+			const btn = $("btnAnalyze");
+			btn.disabled = true;
+			setProcessing(true, "folders");
 			setStatus(
-				"statusDiscovery",
-				`Found ${store.getState().discovered.length}`,
-				"success",
+				"statusFolders",
+				browserApi.i18n.getMessage("analyzing"),
+				"progress",
 			);
-			setProcessing(false, "discovery");
-		};
 
-		const selectAll = $("selectAllDiscovery");
-		if (selectAll)
-			selectAll.onchange = (e) => {
-				const selected = e.target.checked;
+			// Use store.getState().config OR the checkbox (which is synced via listener, but checking DOM is safer for immediate user override)
+			const currentMerge = $("mergeCase").checked;
+			const currentRoot = getCurrentRoot();
+			const sourceSelection = getSelectedFolderMeta($("scanSource"));
+			const sourceFolder = sourceSelection
+				? store
+						.getState()
+						.folders.find(
+							(folder) => String(folder.id) === String(sourceSelection.id),
+						)
+				: null;
+			try {
+				const result = await runAnalysis(
+					$("account").value,
+					$("currentRules").value,
+					{
+						mergeCase: currentMerge,
+						rootPath: currentRoot,
+						folders: store.getState().folders,
+						scanLimit: store.getState().config.scanLimit,
+						sourceFolder,
+					},
+				);
 				store.setState(
 					(prev) => ({
-						discovered: prev.discovered.map((item) => ({ ...item, selected })),
+						missing: result.missing,
+						analysis: result.analysis,
+						analysisMeta: result.analysisMeta,
 					}),
-					{ type: "discovery:select-all" },
+					{ type: "analysis:results" },
 				);
-			};
+				updateStat("resLeafs", result.stats.leafs);
+				updateStat("resMissing", result.scopedMissing.length);
+				setStatus(
+					"statusFolders",
+					browserApi.i18n.getMessage("done"),
+					"success",
+				);
+			} catch (error) {
+				setStatus("statusFolders", normalizeErrorMessage(error), "error");
+			} finally {
+				btn.disabled = false;
+				setProcessing(false, "folders");
+			}
+		};
 
-		document.querySelectorAll(".sortable").forEach(
-			(el) =>
-				(el.onclick = () => {
-					const col = el.dataset.sort;
-					store.setState(
-						(prev) => ({
-							sort:
-								prev.sort.col === col
-									? { ...prev.sort, dir: prev.sort.dir * -1 }
-									: { col, dir: 1 },
-						}),
-						{ type: "discovery:sort" },
-					);
-				}),
-		);
-
-		const btnCreateDiscovered = $("btnCreateDiscovered");
-		if (btnCreateDiscovered)
-			btnCreateDiscovered.onclick = async () => {
-				const paths = store
-					.getState()
-					.discovered.filter((i) => i.selected)
-					.map((i) => i.path);
-				const warnings = collectPathWarnings(paths, { checkEncoding: false });
+	const btnCreateMissing = $("btnCreateMissing");
+	if (btnCreateMissing)
+		btnCreateMissing.onclick = async () => {
+			await withButtonBusy(btnCreateMissing, async () => {
+				const warnings = collectPathWarnings(store.getState().missing, {
+					checkEncoding: false,
+				});
 				if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
 					return;
-				if (paths.length === 0) {
+				if (
+					!store.getState().missing ||
+					store.getState().missing.length === 0
+				) {
+					setStatus("statusCreateMissing", browserApi.i18n.getMessage("noFoldersToCreate"), "info");
+					return;
+				}
+				await runCreate(
+					store.getState().missing,
+					"statusCreateMissing",
+					btnCreateMissing,
+				);
+				await $("btnAnalyze")?.click();
+			});
+		};
+
+	const btnCreateMissingInline = $("btnCreateMissingInline");
+	if (btnCreateMissingInline)
+		btnCreateMissingInline.onclick = async () => {
+			await withButtonBusy(btnCreateMissingInline, async () => {
+				const warnings = collectPathWarnings(store.getState().missing, {
+					checkEncoding: false,
+				});
+				if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
+					return;
+				if (
+					!store.getState().missing ||
+					store.getState().missing.length === 0
+				) {
+					setStatus("statusCreateMissing", browserApi.i18n.getMessage("noFoldersToCreate"), "info");
+					return;
+				}
+				await runCreate(
+					store.getState().missing,
+					"statusCreateMissing",
+					btnCreateMissingInline,
+				);
+				await $("btnAnalyze")?.click();
+			});
+		};
+
+	const btnGenMissingInbox = $("btnGenMissingInbox");
+	if (btnGenMissingInbox)
+		btnGenMissingInbox.onclick = async () => {
+			if (!store.getState().analysis) return;
+			setProcessing(true, "folders");
+			await withButtonBusy(btnGenMissingInbox, async () => {
+				const root = getCurrentRoot();
+				const genBlock = RuleEngine.generateBlock(
+					store.getState().accountBaseUri || PLACEHOLDER_URI,
+				);
+				const rules = store
+					.getState()
+					.analysis.missingInboxRules.map((email) => {
+						const suffix = RuleEngine.emailToPath(email);
+						const path = root ? `${root}/${suffix}` : suffix;
+						return genBlock(email, path, getFilterTypeMask());
+					});
+				appendGeneratedRules(rules.join("\n"));
+				await $("btnAnalyze")?.click();
+			});
+			setProcessing(false, "folders");
+		};
+
+	const btnDownloadRules = $("btnDownloadRules");
+	if (btnDownloadRules)
+		btnDownloadRules.onclick = async () => {
+			const content = $("currentRules")?.value || "";
+			if (!content.trim()) {
+				setStatus("statusFolders", browserApi.i18n.getMessage("noRulesToDownload"), "info");
+				return;
+			}
+			const sorted = RuleEngine.sortRawRules(content);
+			const url = URL.createObjectURL(
+				new Blob([sorted], { type: "text/plain" }),
+			);
+			await browserApi.downloads.download({
+				url,
+				filename: "msgFilterRules.dat",
+				saveAs: true,
+			});
+		};
+
+	const btnGenMissingLeaf = $("btnGenMissingLeaf");
+	if (btnGenMissingLeaf)
+		btnGenMissingLeaf.onclick = async () => {
+			if (!store.getState().analysis) return;
+			setProcessing(true, "folders");
+			await withButtonBusy(btnGenMissingLeaf, async () => {
+				const genBlock = RuleEngine.generateBlock(
+					store.getState().accountBaseUri || PLACEHOLDER_URI,
+				);
+				const rules = store
+					.getState()
+					.analysis.missingLeafRules.map((item) => {
+						return genBlock(
+							item.email,
+							item.expectedPath,
+							getFilterTypeMask(),
+						);
+					});
+				appendGeneratedRules(rules.join("\n"));
+				await $("btnAnalyze")?.click();
+			});
+			setProcessing(false, "folders");
+		};
+
+	const btnGenMismatched = $("btnGenMismatched");
+	if (btnGenMismatched)
+		btnGenMismatched.onclick = async () => {
+			if (!store.getState().analysis) return;
+			setProcessing(true, "folders");
+			await withButtonBusy(btnGenMismatched, async () => {
+				const genBlock = RuleEngine.generateBlock(
+					store.getState().accountBaseUri || PLACEHOLDER_URI,
+				);
+				const rules = store
+					.getState()
+					.analysis.mismatchedFolders.map((item) => {
+						return genBlock(
+							item.email,
+							item.expectedPath,
+							getFilterTypeMask(),
+						);
+					});
+				appendGeneratedRules(rules.join("\n"));
+				await $("btnAnalyze")?.click();
+			});
+			setProcessing(false, "folders");
+		};
+
+	// Rules-to-missing-folders removed
+
+	const btnDeleteEmptyFolders = $("btnDeleteEmptyFolders");
+	if (btnDeleteEmptyFolders)
+		btnDeleteEmptyFolders.onclick = async () => {
+			await withButtonBusy(btnDeleteEmptyFolders, async () => {
+				const emptyLeafFolders =
+					store.getState().analysis?.emptyLeafFolders || [];
+				if (emptyLeafFolders.length === 0) {
 					setStatus(
-						"statusDiscovery",
-						"No folders selected to create.",
+						"statusDeleteEmpty",
+						browserApi.i18n.getMessage("noEmptyFoldersToDelete"),
 						"info",
 					);
 					return;
 				}
-				await withButtonBusy(btnCreateDiscovered, async () => {
-					await runCreate(paths, "statusDiscovery", btnCreateDiscovered);
+				const warnings = collectPathWarnings(emptyLeafFolders, {
+					checkEncoding: false,
 				});
-			};
+				if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
+					return;
+				const results = await runDelete(
+					emptyLeafFolders,
+					"statusDeleteEmpty",
+					btnDeleteEmptyFolders,
+				);
+				store.setState(
+					(prev) => ({
+						analysisMeta: {
+							...(prev.analysisMeta || {}),
+							deleteEmpty: {
+								deleted: results?.deleted?.length || 0,
+								failed: results?.failed?.length || 0,
+								failures: results?.failed || [],
+							},
+						},
+					}),
+					{ type: "analysis:delete-empty" },
+				);
+				await $("btnAnalyze")?.click();
+			});
+		};
 
-		const btnGenRules = $("btnGenRules");
-		if (btnGenRules)
-			btnGenRules.onclick = () => {
-				const selected = store.getState().discovered.filter((i) => i.selected);
-				if (selected.length === 0) return;
-				const mismatch = validateAccountRulesMatch();
-				let base;
-				if (mismatch) {
-					base = store.getState().accountBaseUri || PLACEHOLDER_URI;
-				} else {
-					const rulesBase = RuleEngine.extractBaseUri($("currentRules").value);
-					base =
-						rulesBase && rulesBase !== PLACEHOLDER_URI
-							? rulesBase
-							: store.getState().accountBaseUri || PLACEHOLDER_URI;
+	const btnDeleteInvalidRules = $("btnDeleteInvalidRules");
+	if (btnDeleteInvalidRules)
+		btnDeleteInvalidRules.onclick = async () => {
+			if (!store.getState().analysis) return;
+			setProcessing(true, "folders");
+			await withButtonBusy(btnDeleteInvalidRules, async () => {
+				const invalidEmails = new Set(
+					store.getState().analysis.invalidRules.map((item) => item.email),
+				);
+				const currentRules = $("currentRules");
+				if (currentRules) {
+					const filtered = RuleEngine.parse(currentRules.value)
+						.filter((rule) =>
+							rule.emails.every((email) => !invalidEmails.has(email)),
+						)
+						.map((rule) => {
+							const genBlock = RuleEngine.generateBlock(
+								store.getState().accountBaseUri || PLACEHOLDER_URI,
+							);
+							return rule.emails
+								.map((email) =>
+									genBlock(email, rule.path, getFilterTypeMask()),
+								)
+								.join("\n");
+						});
+					currentRules.value = filtered.join("\n");
+					syncRuleState(currentRules.value);
 				}
-				const typeMask = getFilterTypeMask();
-				const genBlock = RuleEngine.generateBlock(base);
-				const generated = selected
-					.map((i) => genBlock(i.email, i.path, typeMask))
-					.join("\n");
-				appendGeneratedRules(generated);
-			};
+				await $("btnAnalyze")?.click();
+			});
+			setProcessing(false, "folders");
+		};
+
+	const btnLeafDebug = $("btnLeafDebug");
+	if (btnLeafDebug)
+		btnLeafDebug.onclick = () => {
+			const panel = $("leafDebugPanel");
+			if (!panel) return;
+			panel.classList.remove("hidden");
+			const isOpening = !panel.open;
+			panel.open = isOpening;
+		};
+
+	const leafDebugPanel = $("leafDebugPanel");
+	if (leafDebugPanel) {
+		leafDebugPanel.addEventListener("toggle", () => {
+			if (leafDebugPanel.open) {
+				const stats = MailClient.computeFolderStats(
+					store.getState().folders,
+					getCurrentRoot(),
+				);
+				renderLeafDebug(stats);
+			}
+		});
+	}
+
+	// Discovery
+	$("btnInfer").onclick = () => {
+		const root = inferRootFromFolders();
+		if (root) {
+			$("targetRoot").value = root;
+			refreshFolderStats();
+			setStatus(
+				"statusDiscovery",
+				browserApi.i18n.getMessage("rootInferred", [root]),
+				"success",
+			);
+			saveAccountPreferences();
+		} else {
+			setStatus(
+				"statusDiscovery",
+				browserApi.i18n.getMessage("rootNotFound"),
+				"warning",
+			);
+		}
 	};
+
+	$("formDiscovery").onsubmit = async (e) => {
+		e.preventDefault();
+		setProcessing(true, "discovery");
+		setStatus("statusDiscovery", browserApi.i18n.getMessage("scanning"), "progress");
+		let emails;
+		try {
+			const sourceSelection = getSelectedFolderMeta($("scanSource"));
+			const rootFolder = sourceSelection
+				? store
+						.getState()
+						.folders.find(
+							(folder) => String(folder.id) === String(sourceSelection.id),
+						)
+				: store
+						.getState()
+						.folders.find((folder) => folder.type === "inbox") ||
+						store.getState().folders[0];
+			if (!rootFolder) {
+				setStatus("statusDiscovery", browserApi.i18n.getMessage("noSourceFolderSelected"), "warning");
+				return;
+			}
+			const scanResult = await sendRuntimeMessage(
+				{
+					action: "scanFolderSenders",
+					folderId: String(rootFolder.id),
+					limit: store.getState().config.scanLimit,
+				},
+				"statusDiscovery",
+			);
+			emails = scanResult.senders || [];
+		} catch (error) {
+			setProcessing(false, "discovery");
+			return;
+		}
+
+		const existingEmails = new Set(
+			RuleEngine.parse($("currentRules").value).flatMap((r) => r.emails),
+		);
+		const root = getCurrentRoot();
+
+		store.setState(
+			{
+				discovered: emails
+					.filter((e) => !existingEmails.has(e))
+					.map((email) => {
+						const suffix = RuleEngine.emailToPath(email);
+						return suffix
+							? {
+									email,
+									path: root ? `${root}/${suffix}` : suffix,
+									selected: true,
+								}
+							: null;
+					})
+					.filter(Boolean),
+			},
+			{ type: "discovery:results" },
+		);
+
+		setStatus(
+			"statusDiscovery",
+			browserApi.i18n.getMessage("foundCount", [store.getState().discovered.length]),
+			"success",
+		);
+		setProcessing(false, "discovery");
+	};
+
+	const selectAll = $("selectAllDiscovery");
+	if (selectAll)
+		selectAll.onchange = (e) => {
+			const selected = e.target.checked;
+			store.setState(
+				(prev) => ({
+					discovered: prev.discovered.map((item) => ({ ...item, selected })),
+				}),
+				{ type: "discovery:select-all" },
+			);
+		};
+
+	document.querySelectorAll(".sortable").forEach(
+		(el) =>
+			(el.onclick = () => {
+				const col = el.dataset.sort;
+				store.setState(
+					(prev) => ({
+						sort:
+							prev.sort.col === col
+								? { ...prev.sort, dir: prev.sort.dir * -1 }
+								: { col, dir: 1 },
+					}),
+					{ type: "discovery:sort" },
+				);
+			}),
+	);
+
+	const btnCreateDiscovered = $("btnCreateDiscovered");
+	if (btnCreateDiscovered)
+		btnCreateDiscovered.onclick = async () => {
+			const paths = store
+				.getState()
+				.discovered.filter((i) => i.selected)
+				.map((i) => i.path);
+			const warnings = collectPathWarnings(paths, { checkEncoding: false });
+			if (warnings.length > 0 && !(await showWarningsDialog(warnings)))
+				return;
+			if (paths.length === 0) {
+				setStatus(
+					"statusDiscovery",
+					browserApi.i18n.getMessage("noFoldersSelectedToCreate"),
+					"info",
+				);
+				return;
+			}
+			await withButtonBusy(btnCreateDiscovered, async () => {
+				await runCreate(paths, "statusDiscovery", btnCreateDiscovered);
+			});
+		};
+
+	const btnGenRules = $("btnGenRules");
+	if (btnGenRules)
+		btnGenRules.onclick = () => {
+			const selected = store.getState().discovered.filter((i) => i.selected);
+			if (selected.length === 0) return;
+			const mismatch = validateAccountRulesMatch();
+			let base;
+			if (mismatch) {
+				base = store.getState().accountBaseUri || PLACEHOLDER_URI;
+			} else {
+				const rulesBase = RuleEngine.extractBaseUri($("currentRules").value);
+				base =
+					rulesBase && rulesBase !== PLACEHOLDER_URI
+						? rulesBase
+						: store.getState().accountBaseUri || PLACEHOLDER_URI;
+			}
+			const typeMask = getFilterTypeMask();
+			const genBlock = RuleEngine.generateBlock(base);
+			const generated = selected
+				.map((i) => genBlock(i.email, i.path, typeMask))
+				.join("\n");
+			appendGeneratedRules(generated);
+		};
 });

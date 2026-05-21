@@ -340,7 +340,7 @@ export const folderExists = (folderMap) => (path) => {
 };
 
 // ============================================================================
-// Legacy Namespace Export (for backward compatibility during migration)
+// Namespace Export
 // ============================================================================
 
 export const MailClient = {

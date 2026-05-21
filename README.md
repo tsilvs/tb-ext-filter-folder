@@ -33,7 +33,7 @@ More in [BRD](./doc/dev/req/BRD.md)
 #### Option B: Create XPI Package (Distribution)
 
 ```bash
-cd filter-folder-creator
+cd tb-ext-filter-folder
 (cd ./ext/ && zip -r ../dist/$(basename "$(cd .. && pwd)").xpi ./*)
 ```
 
@@ -41,7 +41,7 @@ Install XPI:
 
 1. Thunderbird `->` Tools `->` Add-ons and Themes
 2. Click gear icon `->` "Install Add-on From File"
-3. Select `filter-folder-creator.xpi`
+3. Select `tb-ext-filter-folder.xpi`
 
 ### Test Extension
 
